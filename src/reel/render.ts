@@ -1,11 +1,11 @@
 /**
  * Reel renderer: animates a finished 1080x1350 post image into a 1080x1920, 30 fps reel
- * (H.264 + silent AAC; the user adds a sound in the app). Port of the Hatchery's Python
- * renderer, drawn with Skia (@napi-rs/canvas) and encoded with a bundled ffmpeg.
+ * (H.264 + silent AAC; the user adds a sound in the app), drawn with Skia (@napi-rs/canvas)
+ * and encoded with a bundled ffmpeg.
  *
  * Timeline: the style's entrance on the whole post (BEAT_AT s), then the beats (close-ups
- * with a taped handwritten note, joined by the style's transition), then the style's
- * ending and the logo. Beats are stretched or squeezed so the reel lands in 20-30 s.
+ * with a note over them in the brand's note style, joined by the style's transition), then
+ * the style's ending and the logo. Beats are stretched or squeezed so the reel lands in 20-30 s.
  * With no beats it is the 7.5 s version.
  */
 import { spawn } from "node:child_process";
@@ -16,6 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCanvas, GlobalFonts, loadImage, type Canvas, type SKRSContext2D } from "@napi-rs/canvas";
+import { bundledFontPath } from "./fonts.js";
 import { BEAT_TRANSITION, type ReelStyle } from "./styles.js";
 
 export const W = 1080, H = 1920, FPS = 30, DURATION = 7.5;
@@ -43,17 +44,17 @@ const SOLO = new Set<ReelStyle>(["slide", "drop", "shine", "flip", "rise", "spin
 const require_ = createRequire(import.meta.url);
 const ffmpegPath: string | null = require_("ffmpeg-static");
 
-let fontsReady = false;
-function registerFonts() {
-  if (fontsReady) return;
-  const req = require_;
-  for (const [file, family] of [
-    ["@fontsource/kalam/files/kalam-latin-700-normal.woff2", "SCM Note"],
-    ["@fontsource/gochi-hand/files/gochi-hand-latin-400-normal.woff2", "SCM Note Alt"],
-  ]) {
-    try { GlobalFonts.registerFromPath(req.resolve(file), family); } catch {}
+const fontFamilies = new Map<string, string>();
+
+/** Registers a font file once and returns its family name. */
+function fontFamily(file: string): string {
+  let fam = fontFamilies.get(file);
+  if (!fam) {
+    fam = `SCM Note ${fontFamilies.size + 1}`;
+    try { GlobalFonts.registerFromPath(file, fam); } catch {}
+    fontFamilies.set(file, fam);
   }
-  fontsReady = true;
+  return fam;
 }
 
 // ---------- maths ----------
@@ -184,12 +185,27 @@ export interface BeatSpec { text: string; focus?: [number, number]; zoom?: numbe
 
 interface Beat { img: Img; fx: number; fy: number; zoom: number; note: Img | null; tilt: number; dur: number; start: number }
 
-function makeNote(text: string, seed: number): Img {
-  registerFonts();
+/** How beat notes look; the brand kit's reel.note section. */
+export interface NoteOptions {
+  style: "card" | "paper" | "plain";
+  fontFile?: string;      // default: the bundled Inter
+  background: string;     // #rrggbb
+  text: string;           // #rrggbb
+  tape: boolean;
+  tapeColor?: string;     // #rrggbb; default: the note's background, a little darker
+}
+
+export const DEFAULT_NOTE: NoteOptions = { style: "card", background: "#FFFFFF", text: "#1E1E1E", tape: false };
+
+const rgba = (hex: string, a: number, k = 1) =>
+  `rgba(${[1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k)).join(",")},${a})`;
+
+function makeNote(text: string, seed: number, n: NoteOptions): Img {
+  const family = fontFamily(n.fontFile ?? bundledFontPath("Inter"));
   const m = ctxOf(canvas(1, 1));
   let size = 66, lines: string[] = [];
   for (;;) {
-    m.font = `${size}px "SCM Note", "SCM Note Alt", sans-serif`;
+    m.font = `${size}px "${family}", sans-serif`;
     lines = []; let cur = "";
     for (const w of text.split(/\s+/).filter(Boolean)) {
       const trial = (cur + " " + w).trim();
@@ -201,32 +217,39 @@ function makeNote(text: string, seed: number): Img {
     size -= 4;
   }
   const lh = Math.floor(size * 1.28), nw = NOTE_W, nh = lh * lines.length + 90;
-  const paper = canvas(nw, nh), p = ctxOf(paper);
-  p.beginPath(); p.roundRect(0, 0, nw, nh, 10); p.fillStyle = "rgb(243,233,210)"; p.fill();
-  // faint paper grain
-  const rnd = mulberry32(seed), grain = p.createImageData(nw, nh);
-  for (let i = 0; i < grain.data.length; i += 4) {
-    const g = 128 + ((rnd() + rnd() + rnd() - 1.5) * 18) / 6 * 2;
-    grain.data[i] = grain.data[i + 1] = grain.data[i + 2] = g; grain.data[i + 3] = 22;
+  const sheet = canvas(nw, nh), p = ctxOf(sheet);
+  if (n.style !== "plain") {
+    p.beginPath(); p.roundRect(0, 0, nw, nh, n.style === "card" ? 28 : 10); p.fillStyle = n.background; p.fill();
   }
-  const gc = canvas(nw, nh); ctxOf(gc).putImageData(grain, 0, 0);
-  p.globalCompositeOperation = "source-atop"; p.drawImage(gc, 0, 0); p.globalCompositeOperation = "source-over";
-  p.font = `${size}px "SCM Note", "SCM Note Alt", sans-serif`;
-  p.fillStyle = "rgb(43,33,24)"; p.textBaseline = "top"; p.textAlign = "center";
+  if (n.style === "paper") {
+    // faint paper grain
+    const rnd = mulberry32(seed), grain = p.createImageData(nw, nh);
+    for (let i = 0; i < grain.data.length; i += 4) {
+      const g = 128 + ((rnd() + rnd() + rnd() - 1.5) * 18) / 6 * 2;
+      grain.data[i] = grain.data[i + 1] = grain.data[i + 2] = g; grain.data[i + 3] = 22;
+    }
+    const gc = canvas(nw, nh); ctxOf(gc).putImageData(grain, 0, 0);
+    p.globalCompositeOperation = "source-atop"; p.drawImage(gc, 0, 0); p.globalCompositeOperation = "source-over";
+  }
+  p.font = `${size}px "${family}", sans-serif`;
+  p.fillStyle = n.text; p.textBaseline = "top"; p.textAlign = "center";
+  if (n.style === "plain") { p.shadowColor = "rgba(0,0,0,0.55)"; p.shadowBlur = 18; p.shadowOffsetY = 3; }
   let y = 45 + Math.floor((lh - size) / 2) - 6;
   for (const ln of lines) { p.fillText(ln, nw / 2, y); y += lh; }
-  const card = shadowed(paper, 18, 10, 120), c = ctxOf(card);
-  // tape across the top edge
-  c.save();
-  c.translate(54 + nw / 2, 54 + 4);
-  c.rotate((-(-6 + (seed % 5) * 3) * Math.PI) / 180);
-  c.fillStyle = "rgba(231,219,186,0.69)";
-  c.fillRect(-95, -27, 190, 54);
-  c.restore();
-  return card;
+  const note = n.style === "plain" ? shadowed(sheet, 18, 0, 0) : shadowed(sheet, 18, 10, 120), c = ctxOf(note);
+  if (n.tape) {
+    // a strip of tape across the top edge, tinted from the note's own color
+    c.save();
+    c.translate(54 + nw / 2, 54 + 4);
+    c.rotate((-(-6 + (seed % 5) * 3) * Math.PI) / 180);
+    c.fillStyle = n.tapeColor ? rgba(n.tapeColor, 0.69) : rgba(n.style === "plain" ? "#F3E9D2" : n.background, 0.69, 0.94);
+    c.fillRect(-95, -27, 190, 54);
+    c.restore();
+  }
+  return note;
 }
 
-async function loadBeats(specs: BeatSpec[], hero: Img, seed: number): Promise<{ beats: Beat[]; B: number }> {
+async function loadBeats(specs: BeatSpec[], hero: Img, seed: number, note: NoteOptions): Promise<{ beats: Beat[]; B: number }> {
   const beats: Beat[] = [];
   for (const [k, b] of specs.entries()) {
     const text = (b.text ?? "").split(/\s+/).filter(Boolean).join(" ");
@@ -237,7 +260,7 @@ async function loadBeats(specs: BeatSpec[], hero: Img, seed: number): Promise<{ 
     }
     const [fx, fy] = b.focus ?? [0.5, 0.5];
     const words = text ? text.split(" ").length : 0;
-    beats.push({ img, fx, fy, zoom: b.zoom ?? 1.6, note: text ? makeNote(text, seed + k) : null,
+    beats.push({ img, fx, fy, zoom: b.zoom ?? 1.6, note: text ? makeNote(text, seed + k, note) : null,
       tilt: ((Math.floor(seed / 7) + k * 5) % 7 - 3) * 0.8, dur: clamp(1.4 + 0.32 * words, 3.0, 5.5), start: 0 });
   }
   if (beats.length) {
@@ -256,8 +279,9 @@ export interface ReelOptions {
   post: string;
   logo: string;
   style: ReelStyle;
-  focus?: [number, number];   // card position in the post (pan)
+  focus?: [number, number];   // where the subject sits in the post (pan)
   beats?: BeatSpec[];
+  note?: NoteOptions;
   seed?: number;
 }
 
@@ -319,7 +343,7 @@ async function build(o: ReelOptions): Promise<Scene> {
     y.translate(ew / 2, eh / 2); y.rotate(a); y.drawImage(strip, -bw / 2, -ph);
     s.band = band;
   }
-  if (o.beats?.length) Object.assign(s, await loadBeats(o.beats, hero, seed));
+  if (o.beats?.length) Object.assign(s, await loadBeats(o.beats, hero, seed, o.note ?? DEFAULT_NOTE));
   return s;
 }
 

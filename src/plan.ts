@@ -1,4 +1,4 @@
-import type { Pillars } from "./brandkit.js";
+import type { Pillars, Rules } from "./brandkit.js";
 import type { Entry } from "./history.js";
 import type { ReelStyle } from "./reel/styles.js";
 
@@ -42,9 +42,9 @@ export interface PlannedPost {
   topic: string;
   format: string;
   angle?: string;
-  cards?: string[];
+  subjects?: string[];
   facts?: string[];
-  texture?: string;
+  background?: string;
   layout?: string;
   reel_style?: ReelStyle;
 }
@@ -55,24 +55,25 @@ export interface Violation {
   message: string;
 }
 
-export const RULES = {
-  angleCooldownDays: 42,
-  cardCooldownDays: 30,
-  textureMaxIn7: 2,
+/** Defaults; a brand kit can change them in pillars.yaml's rules section. */
+export const DEFAULT_RULES: Rules = {
+  angle_cooldown_days: 42,
+  subject_cooldown_days: 30,
+  background_max_in_7: 2,
 };
 
 /**
  * Checks a batch plan against the history and the rotation rules:
- * - same topic + format + angle not within 42 days
- * - a featured card/subject not within 30 days, and not twice in the batch
+ * - same topic + format + angle not within angle_cooldown_days (42)
+ * - a featured subject not within subject_cooldown_days (30), and not twice in the batch
  * - a fact or topic never reused, ever
- * - texture: never twice in a row, at most twice in any 7 consecutive posts
+ * - background: never twice in a row, at most background_max_in_7 (2) times in any 7 consecutive posts
  * - layout: never twice in a row
  * - reel style: every post in the batch different; the first post differs from the last
  *   logged post; a format never gets the style it had in its last logged post
  * Earlier posts in the batch count as logged on their dates.
  */
-export function checkPlan(plan: PlannedPost[], history: Entry[]): Violation[] {
+export function checkPlan(plan: PlannedPost[], history: Entry[], rules: Rules = DEFAULT_RULES): Violation[] {
   const v: Violation[] = [];
   const posts = [...plan].sort((a, b) => a.date.localeCompare(b.date));
   const past: Array<Omit<PlannedPost, "nn"> & { nn?: number }> = history.map((h) => ({ ...h }));
@@ -85,15 +86,15 @@ export function checkPlan(plan: PlannedPost[], history: Entry[]): Violation[] {
     if (p.angle) {
       const hit = prior.find(
         (h) => h.topic === p.topic && h.format === p.format && h.angle && norm(h.angle) === norm(p.angle!) &&
-          daysBetween(h.date, p.date) < RULES.angleCooldownDays,
+          daysBetween(h.date, p.date) < rules.angle_cooldown_days,
       );
-      if (hit) v.push({ nn: p.nn, rule: "angle-42d", message: `"${p.angle}" was used for ${p.topic} ${p.format} on ${hit.date}` });
+      if (hit) v.push({ nn: p.nn, rule: "angle-cooldown", message: `"${p.angle}" was used for ${p.topic} ${p.format} on ${hit.date}` });
     }
 
-    for (const c of p.cards ?? []) {
-      const hit = prior.find((h) => (h.cards ?? []).some((x) => norm(x) === norm(c)) &&
-        (h.nn !== undefined || daysBetween(h.date, p.date) < RULES.cardCooldownDays));
-      if (hit) v.push({ nn: p.nn, rule: hit.nn !== undefined ? "card-in-batch" : "card-30d", message: `"${c}" was featured on ${hit.date}` });
+    for (const c of p.subjects ?? []) {
+      const hit = prior.find((h) => (h.subjects ?? []).some((x) => norm(x) === norm(c)) &&
+        (h.nn !== undefined || daysBetween(h.date, p.date) < rules.subject_cooldown_days));
+      if (hit) v.push({ nn: p.nn, rule: hit.nn !== undefined ? "subject-in-batch" : "subject-cooldown", message: `"${c}" was featured on ${hit.date}` });
     }
 
     for (const f of p.facts ?? []) {
@@ -101,12 +102,12 @@ export function checkPlan(plan: PlannedPost[], history: Entry[]): Violation[] {
       if (hit) v.push({ nn: p.nn, rule: hit.nn !== undefined ? "fact-in-batch" : "fact-reused", message: `"${f}" was already used on ${hit.date}` });
     }
 
-    if (p.texture) {
-      if (prev?.texture === p.texture)
-        v.push({ nn: p.nn, rule: "texture-repeat", message: `same texture as the post before (${prev.date})` });
-      const window = [...prior.slice(-6), p].filter((h) => h.texture === p.texture);
-      if (window.length > RULES.textureMaxIn7)
-        v.push({ nn: p.nn, rule: "texture-7", message: `"${p.texture}" used ${window.length} times in 7 consecutive posts` });
+    if (p.background) {
+      if (prev?.background === p.background)
+        v.push({ nn: p.nn, rule: "background-repeat", message: `same background as the post before (${prev.date})` });
+      const window = [...prior.slice(-6), p].filter((h) => h.background === p.background);
+      if (window.length > rules.background_max_in_7)
+        v.push({ nn: p.nn, rule: "background-7", message: `"${p.background}" used ${window.length} times in 7 consecutive posts` });
     }
 
     if (p.layout && prev?.layout === p.layout)

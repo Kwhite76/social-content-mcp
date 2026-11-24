@@ -1,8 +1,18 @@
-name: The Hatchery
-handle: thehatcherycards
+name: Harbor Coffee
+handle: harborcoffee
+about: a small-batch coffee roaster; followers are home brewers and regulars
 platforms: [instagram]
-voice: first person, one fan talking to other fans
-never_mention: [eBay, Misprint, TCGplayer, shop, store, link, bio, price, buy, sale, listing]
+voice: warm and plain, first person, a roaster talking to people who love coffee
+never_mention: [discount, sale, buy, price, $, link in bio]
 hashtags: { min: 2, max: 4 }
 caption_words: { min: 30, max: 220 }
 ai_score_target: 0.15
+writing: { emoji: false, dashes: false, max_questions: 1 }
+design:
+  look: overhead photos of beans and cups on light wood, short bold headings
+  colors: { primary: "#3B2A20", accent: "#D9822B", background: "#F4EFE6" }
+  fonts: { heading: Montserrat, body: Lora }
+  avoid: [stock photos, AI-generated images]
+  penpot_file: Harbor Posts
+reel:
+  note: { style: paper, font: Kalam, background: "#F3E9D2", text: "#2B2118", tape: true }

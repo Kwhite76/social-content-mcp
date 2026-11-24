@@ -2,23 +2,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadImage } from "@napi-rs/canvas";
 import { describe, expect, it } from "vitest";
+import { bundledFontPath } from "../src/reel/fonts.js";
 import { crc32, renderStills } from "../src/reel/render.js";
 import { LOGO, makePost } from "./helpers.js";
 
 const beats = [
-  { text: "Roger's Leader card says 7000 power", focus: [0.3, 0.42] as [number, number], zoom: 1.8 },
-  { text: "But he's -2000 until all 10 DON are on the field", focus: [0.72, 0.5] as [number, number] },
-  { text: "A DON deck is only 10 cards" },
-  { text: "So he sits at 5000 for most of the early game", zoom: 1.3 },
-  { text: "His first line gives you a free DON every turn though" },
+  { text: "This bag says washed process on the front", focus: [0.3, 0.42] as [number, number], zoom: 1.8 },
+  { text: "The cherries were fermented in water for two days", focus: [0.72, 0.5] as [number, number] },
+  { text: "That's where the clean taste comes from" },
+  { text: "It tastes like black tea with lemon to me", zoom: 1.3 },
+  { text: "Brew it a little hotter than you would a natural" },
 ];
 
 describe("reel renderer", () => {
   const post = makePost();
 
   it("crc32 matches zlib, so direction matches the Python renderer", () => {
-    expect(crc32("02_2026-11-24_onepiece_did-you-know.png")).toBe(3887504738);
-    expect(crc32("Pokémon.png")).toBe(2428016953);
+    expect(crc32("02_2026-11-24_brewing_did-you-know.png")).toBe(4172172768);
+    expect(crc32("Café.png")).toBe(600728036);
   });
 
   it("is 7.5 s without beats and lands in 20-30 s with them", async () => {
@@ -41,6 +42,21 @@ describe("reel renderer", () => {
     expect([img.width, img.height]).toEqual([1080, 1920]);
     expect(fs.readFileSync(a.paths[0]).equals(fs.readFileSync(b.paths[0]))).toBe(false);
   });
+
+  it("draws beat notes in the brand's note style", async () => {
+    const dir = path.dirname(post);
+    const at = async (note: Parameters<typeof renderStills>[0]["note"], name: string) => {
+      const r = await renderStills({ post, logo: LOGO, style: "pushin", beats: beats.slice(0, 3), note }, [], path.join(dir, name));
+      const t = r.beatMidpoints[0];
+      return fs.readFileSync((await renderStills({ post, logo: LOGO, style: "pushin", beats: beats.slice(0, 3), note }, [t], path.join(dir, name))).paths[0]);
+    };
+    const card = await at(undefined, "note_card");
+    const paper = await at({ style: "paper", background: "#F3E9D2", text: "#2B2118", tape: true, fontFile: bundledFontPath("Kalam") }, "note_paper");
+    const plain = await at({ style: "plain", background: "#000000", text: "#FFFFFF", tape: false }, "note_plain");
+    expect(card.equals(paper)).toBe(false);
+    expect(card.equals(plain)).toBe(false);
+    expect(paper.equals(plain)).toBe(false);
+  }, 60_000);
 
   it("renders every style and every beat transition without throwing", async () => {
     const dir = path.dirname(post);

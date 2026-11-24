@@ -3,15 +3,26 @@ import path from "node:path";
 import { z } from "zod";
 import { REEL_STYLES } from "./reel/styles.js";
 
+/** Older logs called subjects "cards" and backgrounds "textures"; read both. */
+export function legacyNames(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const { cards, texture, ...rest } = raw as Record<string, unknown>;
+  return {
+    ...rest,
+    ...(rest.subjects === undefined && cards !== undefined ? { subjects: cards } : {}),
+    ...(rest.background === undefined && texture !== undefined ? { background: texture } : {}),
+  };
+}
+
 /** One published (or drafted) post, as kept in <brand kit>/history.jsonl. */
-export const EntrySchema = z.object({
+export const EntryObject = z.object({
   date: z.iso.date(),
   topic: z.string(),
   format: z.string(),
   angle: z.string().default(""),
-  cards: z.array(z.string()).default([]), // featured products / cards / subjects
+  subjects: z.array(z.string()).default([]), // featured products, people, places, items
   facts: z.array(z.string()).default([]), // facts and topics used (never reused)
-  texture: z.string().optional(),
+  background: z.string().optional(),
   layout: z.string().optional(),
   reel_style: z.enum(REEL_STYLES).optional(),
   caption: z.string().optional(),
@@ -23,6 +34,8 @@ export const EntrySchema = z.object({
   notes: z.string().optional(),
   logged_at: z.string().optional(),
 });
+/** EntryObject, also reading the older field names */
+export const EntrySchema = z.preprocess(legacyNames, EntryObject);
 export type Entry = z.infer<typeof EntrySchema>;
 
 export const historyFile = (kitDir: string) => path.join(kitDir, "history.jsonl");

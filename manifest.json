@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "social-content-mcp",
   "display_name": "Social Content",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Brand kit in, on-brand posts and reels out.",
-  "long_description": "Plans engagement posts from your brand kit and post history, builds the images in Penpot, renders 20-30 s reels and keeps a local log so nothing repeats. Bring your own Penpot MCP key, AI detector and (optionally) an Instagram token.",
+  "long_description": "Interviews you about your brand, then plans posts from your brand kit and post history, builds the images in your Penpot, renders 20-30 s reels in 14 motion styles, reads your Instagram Insights and keeps a local log so nothing repeats. Ask Claude to set it up, or use the setup prompt.",
   "author": {
     "name": "Kwhite76"
   },
@@ -22,18 +22,31 @@
         "SCM_PENPOT_URL": "${user_config.penpot_url}",
         "SCM_PENPOT_MCP_KEY": "${user_config.penpot_mcp_key}",
         "SCM_INSTAGRAM_TOKEN": "${user_config.instagram_token}",
-        "SCM_AUTO_KEEPER": "${user_config.auto_keeper}"
+        "SCM_AUTO_KEEPER": "${user_config.auto_keeper}",
+        "SCM_INSTAGRAM_ACCOUNT_ID": "${user_config.instagram_account_id}"
       }
     }
   },
   "tools": [
     {
+      "name": "get_guide",
+      "description": "Read the setup or make-posts guide"
+    },
+    {
       "name": "init_brand_kit",
-      "description": "Create the brand kit folder layout"
+      "description": "Create the brand kit folder"
     },
     {
       "name": "analyze_brand_kit",
       "description": "Check the brand kit"
+    },
+    {
+      "name": "save_brand_kit",
+      "description": "Save the brand settings from the setup interview"
+    },
+    {
+      "name": "add_brand_file",
+      "description": "Add a logo, example post, photo, voice note or font"
     },
     {
       "name": "plan_batch",
@@ -44,6 +57,10 @@
       "description": "Check a plan for repeats"
     },
     {
+      "name": "check_caption",
+      "description": "Check a caption against the brand's rules"
+    },
+    {
       "name": "log_post",
       "description": "Log a finished post"
     },
@@ -52,12 +69,20 @@
       "description": "Read the post history"
     },
     {
+      "name": "get_insights",
+      "description": "Read Instagram Insights"
+    },
+    {
       "name": "penpot_status",
       "description": "Check the Penpot connection"
     },
     {
       "name": "penpot_execute",
       "description": "Run code in Penpot"
+    },
+    {
+      "name": "penpot_upload_image",
+      "description": "Upload a local image to Penpot"
     },
     {
       "name": "render_post",
@@ -80,7 +105,7 @@
     "brand_kit_dir": {
       "type": "directory",
       "title": "Brand kit folder",
-      "description": "Folder with logo/, style/, assets/, voice/, brand.yaml and pillars.yaml. Run init_brand_kit to create it.",
+      "description": "A folder for your brand kit (logo, example posts, voice notes, settings). An empty folder is fine: the setup interview fills it in.",
       "required": true
     },
     "penpot_mcp_key": {
@@ -99,8 +124,8 @@
     },
     "instagram_token": {
       "type": "string",
-      "title": "Instagram Graph API token (optional)",
-      "description": "Without it, the Insights step is skipped.",
+      "title": "Instagram access token (optional)",
+      "description": "From a Meta app with the Instagram API (Instagram login). Without it, Insights are skipped. The setup interview walks you through getting one; it's refreshed automatically.",
       "sensitive": true,
       "required": false
     },
@@ -109,6 +134,12 @@
       "title": "Auto-start keeper",
       "description": "Start the Penpot keeper with the extension, so Penpot's MCP plugin stays connected without running anything by hand.",
       "default": true,
+      "required": false
+    },
+    "instagram_account_id": {
+      "type": "string",
+      "title": "Instagram account ID (optional)",
+      "description": "Only needed if your token can see more than one Instagram account.",
       "required": false
     }
   },
@@ -121,5 +152,21 @@
     "runtimes": {
       "node": ">=20.0.0"
     }
-  }
+  },
+  "prompts": [
+    {
+      "name": "setup",
+      "description": "First-time setup: an interview that fills in your brand kit and connects Penpot and Instagram",
+      "text": "Follow the Social Content setup guide (get_guide name \"setup\")."
+    },
+    {
+      "name": "create_posts",
+      "description": "Make a batch of posts",
+      "arguments": [
+        "start",
+        "days"
+      ],
+      "text": "Follow the Social Content create_posts guide (get_guide name \"create_posts\") with start=${arguments.start} days=${arguments.days}."
+    }
+  ]
 }

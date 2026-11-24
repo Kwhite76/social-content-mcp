@@ -1,1 +1,1 @@
-So Gol.D.Roger's Leader card has 7000 power printed on it, but you don't really get to use all of it.
+We roasted the Guji a little lighter this week and it tastes like peach tea now. Took three tries to get there.

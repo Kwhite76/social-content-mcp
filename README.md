@@ -1,34 +1,68 @@
 # Social Content MCP
 
-Brand kit in, on-brand posts and reels out. An MCP server that plans engagement posts from
-your brand kit and post history, builds the images in Penpot, renders 20-30 s reels and keeps
-a local log so nothing repeats. See [docs/PLAN.md](docs/PLAN.md) for the design and status.
+Brand kit in, on-brand posts and reels out. A Claude Desktop extension that interviews you
+about your brand, plans posts from your brand kit and post history, builds the images in your
+Penpot, renders 20-30 s reels, reads your Instagram Insights and keeps a local log so nothing
+repeats. It has no brand of its own: everything brand-specific lives in your brand kit.
+See [docs/PLAN.md](docs/PLAN.md) for the design and status.
 
-## Tools (v0)
+## Install
 
-| Tool | What it does |
+1. Download the `.mcpb` for your computer from the latest
+   [release](https://github.com/Kwhite76/social-content-mcp/releases): `win32-x64` (Windows),
+   `darwin-arm64` (Apple Silicon Mac), `darwin-x64` (Intel Mac) or `linux-x64`.
+2. Double-click it to install in Claude Desktop, and fill in the settings: a folder for your
+   brand kit (an empty one is fine) and your Penpot MCP key (Penpot: Your account >
+   Integrations > MCP Server). The Instagram token is optional.
+3. In Claude, use the **setup** prompt or ask "set up Social Content". Claude interviews you
+   about your brand, writes the brand kit, connects Penpot (a Penpot window opens once for you
+   to sign in), helps you get an Instagram token, and makes a test post.
+
+Then ask for a batch of posts, or use the **create_posts** prompt.
+
+You need a free Penpot account and Chrome or Edge (Windows already has Edge).
+
+## What's in it
+
+| | |
 |---|---|
-| `init_brand_kit` | Creates the brand kit folder and example YAML |
-| `analyze_brand_kit` | Validates the kit and lists what's in it |
-| `plan_batch` | Topic and format per day from the rotation, plus the history to avoid |
-| `check_batch_plan` | Flags repeated angles, items, facts, textures, layouts and reel styles |
-| `log_post` / `query_history` | The local post log (`history.jsonl`) |
-| `penpot_status` / `penpot_execute` / `render_post` | Penpot through its hosted MCP, with your key |
-| `render_reel` | 1080x1920 reel in one of 14 motion styles; with 3-7 beats it runs 20-30 s; writes check frames |
-| `keeper_status` / `keeper_start` | The Penpot keeper's state; start it and wait for Penpot to connect |
+| Guides | `setup` (the interview) and `create_posts` (the whole batch workflow), as prompts and through `get_guide` |
+| Brand kit | `init_brand_kit`, `analyze_brand_kit`, `save_brand_kit`, `add_brand_file` |
+| Planning and writing | `plan_batch`, `check_batch_plan` (repeat rules), `check_caption` (the brand's writing rules) |
+| History | `log_post`, `query_history` (`history.jsonl` in the kit) |
+| Instagram | `get_insights`: recent posts' reach, saves, shares, watch time and follower vs non-follower reach, matched to your logged posts (read-only; saved in the kit's insights/ folder) |
+| Penpot | `penpot_status`, `penpot_execute`, `penpot_upload_image`, `render_post` (board to PNG), through Penpot's hosted MCP with your key |
+| Reels | `render_reel`: 1080x1920, 14 motion styles, 3-7 beats with notes in your note style, ending on your logo |
+| Keeper | `keeper_start`, `keeper_status`: keeps Penpot's plugin connected; starts on its own |
 
-## Install (Claude Desktop)
+## The brand kit
 
-Build the extension on the computer that will run it (the canvas and ffmpeg binaries are per-OS):
+```
+logo/        your logo, a transparent PNG (shown at the end of every reel)
+style/       posts you love (the look to follow)
+assets/      your own photos and backgrounds
+voice/       past captions and writing notes
+fonts/       optional font files for reel notes
+brand.yaml   name, voice, writing rules, design (look, colors, fonts, what to avoid), reel note style
+pillars.yaml topics, formats and angles, backgrounds, layouts, reel styles, repeat rules
+history.jsonl, insights/, output/   written by the extension
+```
+
+The setup interview writes all of it; you can also edit the YAML by hand (`init_brand_kit`
+creates a commented example).
+
+## Build it yourself
+
+The canvas and ffmpeg binaries are per platform, so each bundle is built for one:
 
 ```
 npm install
-npm run pack
+npm run pack                          # this computer's platform
+npm run pack -- --target darwin-x64   # or another (packaging only)
 ```
 
-Double-click `social-content-mcp.mcpb`, then fill in the settings: your brand kit folder and
-your Penpot MCP key (Penpot: Your account > Integrations > MCP Server). The extension starts
-the Penpot keeper on its own (setting: Auto-start keeper, on by default).
+Releases: push a tag like `v0.3.0`; the Release workflow builds and tests every platform's
+bundle and attaches them to the GitHub release.
 
 ## Penpot keeper
 
@@ -75,4 +109,5 @@ npm run spike:penpot     # with SCM_PENPOT_MCP_KEY set: checks the key reaches P
 ```
 
 Settings (environment variables, filled in by the .mcpb settings screen):
-`SCM_BRAND_KIT_DIR`, `SCM_PENPOT_MCP_KEY`, `SCM_PENPOT_URL`, `SCM_INSTAGRAM_TOKEN`, `SCM_OUTPUT_DIR`.
+`SCM_BRAND_KIT_DIR`, `SCM_PENPOT_MCP_KEY`, `SCM_PENPOT_URL`, `SCM_INSTAGRAM_TOKEN`,
+`SCM_INSTAGRAM_ACCOUNT_ID`, `SCM_AUTO_KEEPER`, `SCM_OUTPUT_DIR`.

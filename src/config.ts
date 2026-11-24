@@ -8,6 +8,12 @@ export interface Config {
   penpotUrl: string;
   penpotKey?: string;
   instagramToken?: string;
+  /** which Instagram account, when a Facebook Login token sees several (optional) */
+  instagramAccountId?: string;
+  /** where the server keeps its own state (refreshed tokens) */
+  stateDir: string;
+  /** tests only: a stand-in for the Instagram API */
+  instagramApiBase?: string;
   /** start the Penpot keeper with the server (default on) */
   autoKeeper: boolean;
 }
@@ -22,6 +28,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     penpotUrl: (env.SCM_PENPOT_URL || "https://design.penpot.app").replace(/\/+$/, ""),
     penpotKey: env.SCM_PENPOT_MCP_KEY || undefined,
     instagramToken: env.SCM_INSTAGRAM_TOKEN || undefined,
+    instagramAccountId: env.SCM_INSTAGRAM_ACCOUNT_ID || undefined,
+    instagramApiBase: env.SCM_INSTAGRAM_API_BASE || undefined,
+    stateDir: env.SCM_STATE_DIR || APP_DIR,
     autoKeeper: !/^(false|0|no|off)$/i.test(env.SCM_AUTO_KEEPER ?? ""),
   };
 }

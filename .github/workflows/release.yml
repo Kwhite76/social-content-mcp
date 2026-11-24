@@ -1,0 +1,57 @@
+name: Release
+# Push a tag like v0.3.0: builds the extension for each platform and attaches it to a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+
+  build:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: win32-x64 }
+          - { os: macos-latest, target: darwin-arm64 }
+          - { os: macos-latest, target: darwin-x64, cross: true }
+          - { os: ubuntu-latest, target: linux-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Test
+        if: ${{ !matrix.cross }}
+        run: npm test
+        env:
+          REEL_E2E: "1"
+      - run: npx -y @anthropic-ai/mcpb validate manifest.json
+      - run: node scripts/pack.mjs --target ${{ matrix.target }} --no-build
+      - name: Smoke-test the bundle
+        if: ${{ !matrix.cross }}
+        shell: bash
+        run: node scripts/smoke-bundle.mjs build/mcpb-${{ matrix.target }}
+      - name: Attach to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" social-content-mcp-*-${{ matrix.target }}.mcpb --clobber
