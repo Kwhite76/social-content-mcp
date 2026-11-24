@@ -52,4 +52,7 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] Hatchery brand kit with history migrated from the Drive log (Nov 23 - Dec 6)
 - [x] End to end in Claude Desktop on Jade's PC (2026-11-24, v0.1.2): penpot_status, render_post (Hatchery
   Graphics board to 1080x1350 PNG), render_reel (29 s, 5 beats, pan) in 8.3 s with 6 worker threads
+- [x] Keeper starts with the extension (v0.2.0): worker thread, one keeper per computer (lock + heartbeat),
+  restart with backoff, clean shutdown when Desktop quits, Penpot calls wait for a reconnect and retry once;
+  `keeper_start`; e2e-tested (start with serve, second keeper refused, stdin close stops the browser, takeover after a kill)
 - [ ] Run a full Hatchery batch through v0 (Dec 7 - Dec 20): needs the skill rewritten to use these tools

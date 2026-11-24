@@ -8,6 +8,8 @@ export interface Config {
   penpotUrl: string;
   penpotKey?: string;
   instagramToken?: string;
+  /** start the Penpot keeper with the server (default on) */
+  autoKeeper: boolean;
 }
 
 export const APP_DIR = path.join(os.homedir(), ".social-content-mcp");
@@ -20,5 +22,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     penpotUrl: (env.SCM_PENPOT_URL || "https://design.penpot.app").replace(/\/+$/, ""),
     penpotKey: env.SCM_PENPOT_MCP_KEY || undefined,
     instagramToken: env.SCM_INSTAGRAM_TOKEN || undefined,
+    autoKeeper: !/^(false|0|no|off)$/i.test(env.SCM_AUTO_KEEPER ?? ""),
   };
 }

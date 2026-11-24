@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { isMainThread } from "node:worker_threads";
 import { chromium, type BrowserContext, type Page, type Locator } from "playwright-core";
 import { APP_DIR } from "../config.js";
 
@@ -11,6 +13,9 @@ import { APP_DIR } from "../config.js";
  *
  * Uses the installed Chrome, or Edge (always present on Windows); nothing to download.
  * Pause: create a file named PAUSE in the keeper folder. Stop: Ctrl+C.
+ *
+ * The extension starts it on its own (see supervisor.ts); `node dist/cli.js keeper` runs it by
+ * hand. Only one keeper runs per computer: keeper.lock holds the owner's pid and a heartbeat.
  */
 
 export const KEEPER_DIR = path.join(APP_DIR, "keeper");
@@ -19,11 +24,88 @@ const PROFILE = path.join(KEEPER_DIR, "browser-profile");
 export const KEEPER_LOG = path.join(KEEPER_DIR, "keeper.log");
 const PAUSE = path.join(KEEPER_DIR, "PAUSE");
 const STATUS = path.join(KEEPER_DIR, "status.json");
+const LOCK = path.join(KEEPER_DIR, "keeper.lock");
+const LOCK_STALE_MS = 120_000;
+const HEARTBEAT_MS = 20_000;
 
 const CHECK_EVERY_MS = Number(process.env.KEEPER_CHECK_MS) || 30_000;
 const MAX_CLICK_TRIES = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export type KeeperState = "starting" | "connected" | "down" | "paused" | "needs_sign_in" | "stopped";
+
+// ---------- one keeper per computer ----------
+
+interface LockInfo { pid: number; at: string; by: string }
+
+const pidAlive = (pid: number) => {
+  try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === "EPERM"; }
+};
+
+/** The keeper that holds the lock, if it's alive (pid running and heartbeat fresh). */
+export function lockOwner(): LockInfo | null {
+  try {
+    const l = JSON.parse(fs.readFileSync(LOCK, "utf8")) as LockInfo;
+    return pidAlive(l.pid) && Date.now() - Date.parse(l.at) < LOCK_STALE_MS ? l : null;
+  } catch {
+    return null;
+  }
+}
+
+export class KeeperBusy extends Error {
+  constructor(public owner: LockInfo) { super(`Another keeper is already running (pid ${owner.pid}, started by ${owner.by}).`); }
+}
+
+function acquireLock(by: string) {
+  fs.mkdirSync(KEEPER_DIR, { recursive: true });
+  for (let i = 0; i < 2; i++) {
+    try {
+      fs.writeFileSync(LOCK, JSON.stringify({ pid: process.pid, at: new Date().toISOString(), by }), { flag: "wx" });
+      return;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      const owner = lockOwner();
+      if (owner && owner.pid !== process.pid) throw new KeeperBusy(owner);
+      fs.rmSync(LOCK, { force: true }); // stale: its keeper died
+    }
+  }
+  throw new Error("Couldn't take the keeper lock.");
+}
+
+function touchLock(by: string) {
+  try { fs.writeFileSync(LOCK, JSON.stringify({ pid: process.pid, at: new Date().toISOString(), by })); } catch {}
+}
+
+function releaseLock() {
+  try {
+    const l = JSON.parse(fs.readFileSync(LOCK, "utf8")) as LockInfo;
+    if (l.pid === process.pid) fs.rmSync(LOCK, { force: true });
+  } catch {}
+}
+
+function writeStatus(state: KeeperState, headless: boolean) {
+  try { fs.writeFileSync(STATUS, JSON.stringify({ state, headless, at: new Date().toISOString(), pid: process.pid })); } catch {}
+}
+
+/**
+ * Closes any browser still running on the keeper's profile. A keeper that was killed (the app
+ * closed, the PC slept mid-check) can leave its browser behind, holding the profile locked so the
+ * next launch fails. Only touches browsers started with this exact profile folder.
+ */
+function killStaleBrowser(): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => resolve();
+    if (process.platform === "win32") {
+      const like = PROFILE.replace(/'/g, "''").replace(/([\[\]*?])/g, "`$1");
+      const ps = `Get-CimInstance Win32_Process -Filter "Name='chrome.exe' OR Name='msedge.exe'" | ` +
+        `Where-Object { $_.CommandLine -like '*${like}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+      execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", ps], { timeout: 20_000, windowsHide: true }, done);
+    } else {
+      execFile("pkill", ["-f", "--", `--user-data-dir=${PROFILE}`], { timeout: 10_000 }, () => setTimeout(done, 500));
+    }
+  });
+}
 
 function log(msg: string) {
   const line = `${new Date().toISOString()}  ${msg}`;
@@ -49,6 +131,7 @@ const isLogin = (url: string) => /auth-login|auth\/login|screen=auth/.test(url);
 const isWorkspace = (url: string) => url.includes("workspace") && url.includes("file-id=");
 
 async function launch(headless: boolean): Promise<BrowserContext> {
+  await killStaleBrowser();
   const opts = {
     headless,
     viewport: null,
@@ -74,6 +157,7 @@ async function launch(headless: boolean): Promise<BrowserContext> {
 async function waitForLogin(page: Page) {
   if (!isLogin(page.url())) return;
   log("Not signed in. Sign in to Penpot in the keeper window (one time only).");
+  writeStatus("needs_sign_in", false);
   while (isLogin(page.url())) await sleep(2000);
   log("Signed in.");
 }
@@ -89,6 +173,7 @@ async function openFile(page: Page, cfg: KeeperConfig, penpotUrl: string) {
     await sleep(3000);
     await waitForLogin(page);
     log("First run: open your design file in the keeper window. It will be remembered.");
+    writeStatus("needs_sign_in", false);
     while (!isWorkspace(page.url())) await sleep(2000);
     cfg.fileUrl = page.url().replace(/&page-id=[^&]*/, "");
     saveConfig(cfg);
@@ -196,8 +281,15 @@ const withTimeout = <T>(p: Promise<T>, ms: number, what: string) =>
  * The first run (and any time Penpot asks you to sign in again) opens a window instead.
  * KEEPER_HEADED=1 keeps the window; KEEPER_HEADLESS=1 forces headless (tests).
  */
-export async function runKeeper(penpotUrl = "https://design.penpot.app/") {
-  log("Penpot keeper starting.");
+export async function runKeeper(
+  penpotUrl = "https://design.penpot.app/",
+  opts: { signal?: AbortSignal; by?: string } = {},
+) {
+  const by = opts.by ?? "command line";
+  acquireLock(by); // throws KeeperBusy if another keeper is running
+  const beat = setInterval(() => touchLock(by), HEARTBEAT_MS);
+  log(`Penpot keeper starting (${by}).`);
+  writeStatus("starting", false);
   const cfg = loadConfig();
   if (process.env.KEEPER_FILE_URL) cfg.fileUrl = process.env.KEEPER_FILE_URL; // tests
   let ctx: BrowserContext | null = null;
@@ -239,12 +331,33 @@ export async function runKeeper(penpotUrl = "https://design.penpot.app/") {
     }
   };
 
-  for (const sig of ["SIGINT", "SIGTERM", "SIGBREAK"] as const)
-    process.on(sig, () => { log("Keeper stopped."); process.exit(0); });
+  const shutdown = async () => {
+    clearInterval(beat);
+    await closeBrowser();
+    writeStatus("stopped", headless);
+    releaseLock();
+    log("Keeper stopped.");
+  };
+  if (isMainThread)
+    for (const sig of ["SIGINT", "SIGTERM", "SIGBREAK"] as const)
+      process.on(sig, () => { void shutdown().finally(() => process.exit(0)); });
 
-  await start();
+  const stopped = () => opts.signal?.aborted === true;
+  /** sleeps, but wakes early when the keeper is asked to stop */
+  const nap = (ms: number) => new Promise<void>((r) => {
+    if (stopped()) return r();
+    const t = setTimeout(r, ms);
+    opts.signal?.addEventListener("abort", () => { clearTimeout(t); r(); }, { once: true });
+  });
+
+  try {
+    await start();
+  } catch (e) {
+    await shutdown();
+    throw e;
+  }
   let tries = 0;
-  let state: "connected" | "down" | "paused" | null = null;
+  let state: KeeperState = "starting";
 
   const tick = async () => {
     if (!ctx || page.isClosed()) {
@@ -278,33 +391,47 @@ export async function runKeeper(penpotUrl = "https://design.penpot.app/") {
     }
   };
 
-  for (;;) {
+  while (!stopped()) {
     try {
       // a frozen page can make browser calls hang forever, so every check has a deadline
       await withTimeout(tick(), 60_000, "keeper check");
     } catch (e) {
+      if (stopped()) break;
       log(`Problem: ${(e as Error).message.split("\n")[0]}. Restarting the browser.`);
       await start().catch((err) => log(`Couldn't restart the browser: ${(err as Error).message.split("\n")[0]}`));
       tries = 0;
     }
-    try { fs.writeFileSync(STATUS, JSON.stringify({ state, headless, at: new Date().toISOString(), pid: process.pid })); } catch {}
-    await sleep(CHECK_EVERY_MS);
+    writeStatus(state, headless);
+    await nap(CHECK_EVERY_MS);
   }
+  await shutdown();
 }
 
-/** Keeper state (from its heartbeat) and the last log lines, for the keeper_status tool. */
-export function keeperStatus(lines = 15): { running: boolean; state: string; lastLines: string[] } {
-  let running = false, state = "not running";
-  try {
-    const st = JSON.parse(fs.readFileSync(STATUS, "utf8")) as { state: string | null; at: string };
-    running = Date.now() - Date.parse(st.at) < 3 * CHECK_EVERY_MS + 60_000;
-    state = running ? st.state ?? "starting" : "not running";
-  } catch {}
+export interface KeeperStatus {
+  running: boolean;
+  state: KeeperState | "not running";
+  /** who runs it: the extension or the command line */
+  owner: string | null;
+  lastLines: string[];
+}
+
+/** Keeper state (from its heartbeat and lock) and the last log lines, for the keeper tools. */
+export function keeperStatus(lines = 15): KeeperStatus {
+  const owner = lockOwner();
+  let state: KeeperStatus["state"] = "not running";
+  if (owner) {
+    try {
+      const st = JSON.parse(fs.readFileSync(STATUS, "utf8")) as { state: KeeperState | null };
+      state = st.state && st.state !== "stopped" ? st.state : "starting";
+    } catch {
+      state = "starting";
+    }
+  }
   let lastLines: string[];
   try {
     lastLines = fs.readFileSync(KEEPER_LOG, "utf8").trim().split("\n").slice(-lines);
   } catch {
     lastLines = ["The keeper hasn't run on this computer yet."];
   }
-  return { running, state, lastLines };
+  return { running: !!owner, state, owner: owner?.by ?? null, lastLines };
 }

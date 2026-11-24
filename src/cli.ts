@@ -3,16 +3,39 @@ import fs from "node:fs";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
 import { createServer } from "./server.js";
-import { runKeeper } from "./keeper/keeper.js";
+import { KeeperBusy, runKeeper } from "./keeper/keeper.js";
 
 const [cmd = "serve"] = process.argv.slice(2);
 const cfg = loadConfig();
 
 if (cmd === "serve") {
-  const server = createServer(cfg);
+  const { KeeperSupervisor } = await import("./keeper/supervisor.js");
+  // the keeper needs the key to be useful, and can be turned off in the extension settings
+  const keeper = cfg.autoKeeper && cfg.penpotKey ? new KeeperSupervisor(cfg.penpotUrl + "/") : undefined;
+  const server = createServer(cfg, { keeper });
   await server.connect(new StdioServerTransport());
+  keeper?.start();
+  // Claude Desktop closes stdin (or sends a signal) when it quits or disables the extension:
+  // close the keeper's browser first so it isn't left running
+  let closing = false;
+  const quit = () => {
+    if (closing) return;
+    closing = true;
+    void (keeper?.stop() ?? Promise.resolve()).finally(() => process.exit(0));
+  };
+  process.stdin.on("end", quit);
+  process.stdin.on("close", quit);
+  for (const sig of ["SIGINT", "SIGTERM", "SIGBREAK", "SIGHUP"] as const) process.on(sig, quit);
 } else if (cmd === "keeper") {
-  await runKeeper(cfg.penpotUrl + "/");
+  try {
+    await runKeeper(cfg.penpotUrl + "/");
+  } catch (e) {
+    if (e instanceof KeeperBusy) {
+      console.error(`${e.message} Nothing to do: Penpot is already being kept connected.`);
+      process.exit(3);
+    }
+    throw e;
+  }
 } else if (cmd === "reel") {
   // social-content-mcp reel <post.png> <logo.png> <style> <out.mp4> [beats.json]
   const [post, logo, style, out, beatsFile] = process.argv.slice(3);

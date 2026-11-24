@@ -8,6 +8,7 @@ import { PenpotBridge } from "./penpot.js";
 import { checkPlan, planBatch, RULES } from "./plan.js";
 import { REEL_STYLES } from "./reel/styles.js";
 import { keeperStatus } from "./keeper/keeper.js";
+import type { KeeperSupervisor } from "./keeper/supervisor.js";
 import { renderReel, renderStills, DURATION } from "./reel/render.js";
 import fs from "node:fs";
 import { createRequire } from "node:module";
@@ -18,9 +19,41 @@ const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON
 const fail = (message: string) => ({ isError: true, content: [{ type: "text" as const, text: message }] });
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function createServer(cfg: Config): McpServer {
+export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = {}): McpServer {
   const server = new McpServer({ name: "social-content-mcp", version: VERSION });
   const penpot = new PenpotBridge(cfg.penpotUrl, cfg.penpotKey);
+  const keeper = deps.keeper;
+
+  /** What the keeper needs from the person, if anything; null when it's fine. */
+  const keeperHint = (st: ReturnType<typeof keeperStatus>) =>
+    st.state === "needs_sign_in"
+      ? "Penpot needs a sign-in: the keeper opened a Penpot window on this computer. Sign in there (and open the design file if asked); it switches back to running hidden on its own."
+      : st.state === "paused"
+        ? "The keeper is paused (a PAUSE file is in ~/.social-content-mcp/keeper). Delete it to resume."
+        : !keeper && !st.running
+          ? "The keeper isn't running and the extension isn't set to start it (Auto-start keeper is off, or no Penpot key). Start it with: node dist/cli.js keeper"
+          : null;
+
+  /**
+   * Runs a Penpot call; if it fails while the plugin isn't connected, gets the keeper going,
+   * waits for it to reconnect and tries once more. A failure while connected is the code's own.
+   */
+  const withPenpot = async <T>(call: () => Promise<T>): Promise<T> => {
+    try {
+      return await call();
+    } catch (e) {
+      const before = keeperStatus(1);
+      if (!keeper || before.state === "connected" || before.state === "paused") throw e;
+      keeper.start();
+      const st = await keeper.waitReady(150_000);
+      if (st.state !== "connected") {
+        const hint = keeperHint(st) ?? `The keeper couldn't reconnect Penpot yet (state: ${st.state}). Last log: ${st.lastLines.slice(-3).join(" | ")}`;
+        throw new Error(`${(e as Error).message}\n${hint}`);
+      }
+      await new Promise((r) => setTimeout(r, 2000)); // let the plugin settle
+      return await call();
+    }
+  };
 
   const kitProblems = (problems: string[]) => fail(`Brand kit has problems:\n- ${problems.join("\n- ")}`);
 
@@ -129,13 +162,14 @@ export function createServer(cfg: Config): McpServer {
     inputSchema: {},
     annotations: { readOnlyHint: true },
   }, async () => {
-    const keeper = keeperStatus(5);
-    if (!penpot.configured) return json({ version: VERSION, key: "missing", keeper });
+    if (!penpot.configured) return json({ version: VERSION, key: "missing", keeper: keeperStatus(5) });
+    const started = keeper && !keeperStatus(1).running ? keeper.start() : undefined;
     try {
-      const file = await penpot.execute("return penpot.currentFile ? penpot.currentFile.name : null;");
-      return json({ version: VERSION, key: "set", reachable: true, open_file: file, keeper });
+      const file = await withPenpot(() => penpot.execute("return penpot.currentFile ? penpot.currentFile.name : null;"));
+      return json({ version: VERSION, key: "set", reachable: true, open_file: file, keeper: { ...keeperStatus(5), started } });
     } catch (e) {
-      return json({ version: VERSION, key: "set", reachable: false, error: (e as Error).message, keeper });
+      const st = keeperStatus(5);
+      return json({ version: VERSION, key: "set", reachable: false, error: (e as Error).message, keeper: { ...st, started }, action_needed: keeperHint(st) });
     }
   });
 
@@ -145,7 +179,7 @@ export function createServer(cfg: Config): McpServer {
     inputSchema: { code: z.string().min(1) },
   }, async ({ code }) => {
     try {
-      return { content: [{ type: "text" as const, text: await penpot.execute(code) }] };
+      return { content: [{ type: "text" as const, text: await withPenpot(() => penpot.execute(code)) }] };
     } catch (e) {
       return fail((e as Error).message);
     }
@@ -161,7 +195,7 @@ export function createServer(cfg: Config): McpServer {
     },
   }, async ({ shape_id, file_name, mode }) => {
     try {
-      return json(await penpot.exportPng(shape_id, path.join(cfg.outputDir, file_name), mode));
+      return json(await withPenpot(() => penpot.exportPng(shape_id, path.join(cfg.outputDir, file_name), mode)));
     } catch (e) {
       return fail((e as Error).message);
     }
@@ -216,10 +250,24 @@ export function createServer(cfg: Config): McpServer {
 
   server.registerTool("keeper_status", {
     title: "Check the Penpot keeper",
-    description: "Shows whether the keeper (which keeps Penpot's MCP plugin connected) is running and its last log lines.",
+    description: "Shows whether the keeper (which keeps Penpot's MCP plugin connected) is running, who started it, and its last log lines.",
     inputSchema: { lines: z.number().int().min(1).max(100).default(15) },
     annotations: { readOnlyHint: true },
-  }, async ({ lines }) => json(keeperStatus(lines)));
+  }, async ({ lines }) => {
+    const st = keeperStatus(lines);
+    return json({ ...st, auto_start: !!keeper, action_needed: keeperHint(st) });
+  });
+
+  server.registerTool("keeper_start", {
+    title: "Start the Penpot keeper",
+    description: "Starts the keeper if it isn't running (the extension normally starts it on its own) and waits until Penpot's MCP plugin is connected. If Penpot needs a sign-in, says so instead of waiting.",
+    inputSchema: { wait_seconds: z.number().int().min(0).max(300).default(120) },
+  }, async ({ wait_seconds }) => {
+    if (!keeper) return fail(keeperHint(keeperStatus(1)) ?? "The keeper is running outside the extension.");
+    const started = keeper.start();
+    const st = wait_seconds ? await keeper.waitReady(wait_seconds * 1000) : keeperStatus(8);
+    return json({ started, ...st, action_needed: keeperHint(st) });
+  });
 
   return server;
 }

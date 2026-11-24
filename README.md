@@ -15,7 +15,7 @@ a local log so nothing repeats. See [docs/PLAN.md](docs/PLAN.md) for the design 
 | `log_post` / `query_history` | The local post log (`history.jsonl`) |
 | `penpot_status` / `penpot_execute` / `render_post` | Penpot through its hosted MCP, with your key |
 | `render_reel` | 1080x1920 reel in one of 14 motion styles; with 3-7 beats it runs 20-30 s; writes check frames |
-| `keeper_status` | Whether the Penpot keeper is running |
+| `keeper_status` / `keeper_start` | The Penpot keeper's state; start it and wait for Penpot to connect |
 
 ## Install (Claude Desktop)
 
@@ -27,20 +27,27 @@ npm run pack
 ```
 
 Double-click `social-content-mcp.mcpb`, then fill in the settings: your brand kit folder and
-your Penpot MCP key (Penpot: Your account > Integrations > MCP Server). Start the keeper so
-Penpot stays connected: `npx social-content-mcp keeper` (or `node dist/cli.js keeper`).
+your Penpot MCP key (Penpot: Your account > Integrations > MCP Server). The extension starts
+the Penpot keeper on its own (setting: Auto-start keeper, on by default).
 
 ## Penpot keeper
 
 Penpot's MCP plugin only works while its browser tab is awake. The keeper opens Penpot in
 its own Chrome or Edge window that is never put to sleep, keeps your file open and reconnects
-MCP whenever it drops:
+MCP whenever it drops.
+
+The extension starts it with the server, in a worker thread, restarts it if it crashes, and
+closes its browser when Claude Desktop quits or the extension is turned off. If a Penpot call
+fails while MCP is disconnected, the server waits for the keeper to reconnect and retries once.
+Only one keeper runs per computer (`keeper.lock`); to run it by hand instead, turn Auto-start
+keeper off and run:
 
 ```
 npx social-content-mcp keeper
 ```
 
-First run: sign in to Penpot in the window and open your design file; it's remembered. From
+First run: sign in to Penpot in the window that opens and open your design file; it's remembered
+(`keeper_status` reports `needs_sign_in` until then). From
 then on the keeper runs headless (no window), so Windows never treats Penpot as a background
 tab to freeze; if Penpot ever asks you to sign in again, a window opens for that. A watchdog
 restarts the browser if the page stops responding. `KEEPER_HEADED=1` keeps the window.

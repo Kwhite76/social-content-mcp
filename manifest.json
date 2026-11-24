@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "social-content-mcp",
   "display_name": "Social Content",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Brand kit in, on-brand posts and reels out.",
   "long_description": "Plans engagement posts from your brand kit and post history, builds the images in Penpot, renders 20-30 s reels and keeps a local log so nothing repeats. Bring your own Penpot MCP key, AI detector and (optionally) an Instagram token.",
   "author": {
@@ -21,7 +21,8 @@
         "SCM_BRAND_KIT_DIR": "${user_config.brand_kit_dir}",
         "SCM_PENPOT_URL": "${user_config.penpot_url}",
         "SCM_PENPOT_MCP_KEY": "${user_config.penpot_mcp_key}",
-        "SCM_INSTAGRAM_TOKEN": "${user_config.instagram_token}"
+        "SCM_INSTAGRAM_TOKEN": "${user_config.instagram_token}",
+        "SCM_AUTO_KEEPER": "${user_config.auto_keeper}"
       }
     }
   },
@@ -67,6 +68,10 @@
       "description": "Render a 20-30 s reel in one of 14 styles"
     },
     {
+      "name": "keeper_start",
+      "description": "Start the Penpot keeper and wait for it to connect"
+    },
+    {
       "name": "keeper_status",
       "description": "Check the Penpot keeper"
     }
@@ -97,6 +102,13 @@
       "title": "Instagram Graph API token (optional)",
       "description": "Without it, the Insights step is skipped.",
       "sensitive": true,
+      "required": false
+    },
+    "auto_keeper": {
+      "type": "boolean",
+      "title": "Auto-start keeper",
+      "description": "Start the Penpot keeper with the extension, so Penpot's MCP plugin stays connected without running anything by hand.",
+      "default": true,
       "required": false
     }
   },
