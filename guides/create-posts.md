@@ -7,7 +7,8 @@ Arguments (all optional): `start` (YYYY-MM-DD; default the day after the last lo
 ## Step 0: Preflight
 1. `analyze_brand_kit`. If it reports problems, stop, show them, and offer to fix them with the setup guide (`get_guide` name `setup`).
 2. `keeper_start`, then `penpot_status`. The open file should be the brand's `design.penpot_file` (if set). If the keeper reports `needs_sign_in`, tell the user once: a Penpot window opened on their computer; sign in there. Carry on with Steps 1 to 3 and check again before the first image. If Penpot still isn't connected when images are due, deliver the posts without images or reels and say why at the top.
-3. Read every file in the kit's voice/ folder, and look at the images in style/. They set the voice and the look.
+3. `ai_detector_status` with `download: true`. Every caption is scored by the AI-writing check before it's delivered; this makes sure its model (a one-time download of about 450 MB) is downloading or ready while you plan and write. If it reports `failed`, call it again with `download: true`; if it fails again, tell the user why before going on.
+4. Read every file in the kit's voice/ folder, and look at the images in style/. They set the voice and the look.
 
 ## Step 1: Plan
 1. `plan_batch` with the start date and days. It gives each post's date, topic and format, plus the recent history, the facts ever used, the last reel style, and the backgrounds, layouts and reel styles to choose from.
@@ -35,7 +36,9 @@ Check every caption and its beats with `check_caption`; fix and recheck until it
 ## Step 4: Make it sound human
 If the session has skills for removing AI writing patterns (for example humanizer or anti-ai-writing), run the caption, Story, comments, replies and beats through them, keeping every fact, name, number and hashtag exactly. Otherwise edit by hand: cut filler, stock phrases, forced groups of three, dramatic one-line closers and needless contrasts ("not X, but Y"). Then `check_caption` again.
 
-Score each caption (without its hashtags) with `detect_ai_text`. It returns the score, the brand's target and every sentence's AI probability. While a caption is over the target, rewrite its highest-scoring sentences (anything over about 0.20) in the same voice with the same facts: try 3 to 5 phrasings of a sentence, score them together, and keep the lowest one that still reads naturally. Contractions, plain casual phrasing and concrete detail usually help; tidy formal phrasing, "Also," openers and stock questions usually hurt. Rescore the whole caption, up to 4 rounds. Never add slang or filler, invent run-on sentences, or change a fact, name or number just to lower the score. Sentences under 5 words aren't scored, so the closing line should be long enough to count. If a caption can't get under the target naturally, keep the best natural version and note its score. If `detect_ai_text` says the model is still downloading, carry on and score the captions before delivering; if it says the detector isn't available on this computer, skip scoring and say so in the notes.
+Every caption must be scored before it's logged or delivered; this step is never skipped. Score each caption (without its hashtags) with `detect_ai_text`. It returns the score, the brand's target and every sentence's AI probability. While a caption is over the target, rewrite its highest-scoring sentences (anything over about 0.20) in the same voice with the same facts: try 3 to 5 phrasings of a sentence, score them together, and keep the lowest one that still reads naturally. Contractions, plain casual phrasing and concrete detail usually help; tidy formal phrasing, "Also," openers and stock questions usually hurt. Rescore the whole caption, up to 4 rounds. Never add slang or filler, invent run-on sentences, or change a fact, name or number just to lower the score. Sentences under 5 words aren't scored, so the closing line should be long enough to count. If a caption can't get under the target naturally, keep the best natural version and give its score in the notes.
+
+If `detect_ai_text` says the model is still downloading, carry on with the other steps and come back to scoring before Step 7. If the detector can't run (its download keeps failing, or it can't start on this computer), don't log or deliver the posts as finished: finish the images and reels, then tell the user what's wrong and how to fix it, and score the captions once it works.
 
 Read the batch as a whole: openings, lengths and endings should vary, and no two posts should sound alike.
 
@@ -73,7 +76,7 @@ Look at the check frames it returns: at 3.0 s the whole post shows; in each beat
 Reels have a silent audio track on purpose: the user adds a sound in the app.
 
 ## Step 7: Log
-`log_post` for each post: date, topic, format, angle, subjects, facts (each fact or topic used, short enough to match later), background, layout, reel_style, caption, reel_beats, ai_score (if scored), image, reel, sources and notes.
+`log_post` for each post: date, topic, format, angle, subjects, facts (each fact or topic used, short enough to match later), background, layout, reel_style, caption, reel_beats, ai_score (required: the final `detect_ai_text` score as a fraction), image, reel, sources and notes.
 
 ## Step 8: Deliver
 1. Show the images in date order, then the reels, and say where they're saved (the kit's output folder).

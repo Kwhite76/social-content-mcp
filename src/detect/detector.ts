@@ -12,6 +12,9 @@ import path from "node:path";
  *
  * The model (about 450 MB) isn't in the extension: it's downloaded once, on first use, from the
  * project's GitHub release, checked against its SHA-256, and kept in the app folder.
+ *
+ * It runs on onnxruntime-node where that has a build, and on onnxruntime-web (WebAssembly) where it
+ * doesn't (Intel Macs): slower, same results. So every computer gets the check.
  */
 
 export const MODEL_NAME = "desklib-ai-text-detector-v1.01";
@@ -66,7 +69,7 @@ interface ManifestFile { name: string; bytes: number; sha256: string }
 interface Manifest { model: string; variant: string; files: ManifestFile[] }
 
 export type DetectorState =
-  | { state: "ready"; dir: string; variant: string }
+  | { state: "ready"; dir: string; variant: string; runtime: "native" | "wasm" }
   | { state: "not downloaded"; size_mb?: number }
   | { state: "downloading"; done_mb: number; total_mb: number; percent: number }
   | { state: "failed"; error: string }
@@ -98,7 +101,7 @@ export class Detector {
     const runtime = await loadRuntime();
     if (!runtime.ok) return { state: "unavailable", reason: runtime.reason };
     const m = this.ready();
-    if (m) return { state: "ready", dir: this.dir, variant: m.variant };
+    if (m) return { state: "ready", dir: this.dir, variant: m.variant, runtime: runtime.kind };
     if (this.download) {
       const mb = (n: number) => Math.round(n / 1e6);
       return { state: "downloading", done_mb: mb(this.progress.done), total_mb: mb(this.progress.total), percent: this.progress.total ? Math.floor((100 * this.progress.done) / this.progress.total) : 0 };
@@ -191,10 +194,13 @@ export class Detector {
       if (!runtime.ok) throw new Error(`The AI detector isn't available on this computer: ${runtime.reason}`);
       if (!this.ready()) throw new Error("The AI detector's model isn't downloaded yet.");
       const ort = runtime.ort;
-      const session = await ort.InferenceSession.create(path.join(this.dir, "model.onnx"), {
-        graphOptimizationLevel: "all",
-        intraOpNumThreads: Math.max(1, Math.min(8, os.availableParallelism() - 1)),
-      });
+      const modelFile = path.join(this.dir, "model.onnx");
+      const session = runtime.kind === "native"
+        ? await ort.InferenceSession.create(modelFile, {
+          graphOptimizationLevel: "all",
+          intraOpNumThreads: Math.max(1, Math.min(8, os.availableParallelism() - 1)),
+        })
+        : await ort.InferenceSession.create(new Uint8Array(fs.readFileSync(modelFile)), { graphOptimizationLevel: "all" });
       const pad = 0;
       return {
         run: async (batch: number[][]) => {
@@ -222,11 +228,30 @@ async function sha256(file: string): Promise<string> {
 }
 
 type Ort = typeof import("onnxruntime-node");
-let runtimeCache: Promise<{ ok: true; ort: Ort } | { ok: false; reason: string }> | undefined;
-/** onnxruntime-node has no build for some computers (Intel Macs); the rest of the extension works without it. */
-function loadRuntime() {
-  runtimeCache ??= import("onnxruntime-node")
-    .then((ort) => ({ ok: true as const, ort }))
-    .catch((e: Error) => ({ ok: false as const, reason: `the ONNX runtime didn't load (${e.message.split("\n")[0]})` }));
+type Runtime = { ok: true; ort: Ort; kind: "native" | "wasm" } | { ok: false; reason: string };
+let runtimeCache: Promise<Runtime> | undefined;
+
+/**
+ * The ONNX runtime: onnxruntime-node (native, fastest), or onnxruntime-web's WebAssembly build
+ * where the native one has no binary (Intel Macs). SCM_DETECTOR_RUNTIME=wasm forces the second.
+ */
+export function loadRuntime(): Promise<Runtime> {
+  runtimeCache ??= (async (): Promise<Runtime> => {
+    let nativeError = "skipped";
+    if (process.env.SCM_DETECTOR_RUNTIME !== "wasm") {
+      try {
+        return { ok: true, ort: await import("onnxruntime-node"), kind: "native" };
+      } catch (e) {
+        nativeError = (e as Error).message.split("\n")[0];
+      }
+    }
+    try {
+      const web = (await import("onnxruntime-web")) as unknown as Ort & { env: { wasm: { numThreads: number } } };
+      web.env.wasm.numThreads = Math.max(1, Math.min(4, os.availableParallelism() - 1));
+      return { ok: true, ort: web, kind: "wasm" };
+    } catch (e) {
+      return { ok: false, reason: `no ONNX runtime loaded (native: ${nativeError}; WebAssembly: ${(e as Error).message.split("\n")[0]})` };
+    }
+  })();
   return runtimeCache;
 }

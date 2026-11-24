@@ -15,7 +15,7 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   formats, backgrounds, layouts, reel styles, repeat rules).
 - **Connections** (the user's own, set once in the .mcpb settings screen, secrets in the OS
   keychain): the Penpot MCP key is required; the Instagram token is optional (without it the
-  Insights step is skipped); an AI-text detector is used if the session has one.
+  Insights step is skipped). The AI-writing check is built in and required: every caption is scored.
 - **Outputs per post:** 1080x1350 image, 20-30 s 1080x1920 reel in its own style, caption and
   hashtags, Story and pinned comment, music suggestions, and what Insights showed.
 

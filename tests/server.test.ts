@@ -154,6 +154,16 @@ describe("MCP server", () => {
     }
   });
 
+  it("log_post won't log a post without its AI score", async () => {
+    const dir = tempKit();
+    const c = await connect({ SCM_BRAND_KIT_DIR: dir });
+    const entry = { date: "2026-12-01", topic: "Beans", format: "Hot Take", caption: "x" };
+    const missing = await c.callTool({ name: "log_post", arguments: { entry } });
+    expect(missing.isError).toBe(true);
+    expect(text(missing)).toMatch(/ai_score/);
+    expect(body(await c.callTool({ name: "log_post", arguments: { entry: { ...entry, ai_score: 0.091 } } })).logged).toMatchObject({ ai_score: 0.091 });
+  });
+
   it("penpot_status explains a missing key instead of failing", async () => {
     const c = await connect();
     const r = body(await c.callTool({ name: "penpot_status", arguments: {} }));

@@ -268,8 +268,8 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
 
   server.registerTool("log_post", {
     title: "Log a post",
-    description: "Adds a finished post to the brand kit's history.jsonl so later batches don't repeat it.",
-    inputSchema: { entry: EntryObject },
+    description: "Adds a finished post to the brand kit's history.jsonl so later batches don't repeat it. Every post needs its caption's AI score from detect_ai_text (ai_score, as a fraction: 12.3% is 0.123).",
+    inputSchema: { entry: EntryObject.extend({ ai_score: z.number().min(0).max(1).describe("The caption's detect_ai_text score as a fraction (score_pct / 100)") }) },
   }, async ({ entry }) => json({ logged: appendHistory(cfg.brandKitDir, entry) }));
 
   server.registerTool("query_history", {
@@ -297,7 +297,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
   const detectorMessage = (st: Awaited<ReturnType<Detector["status"]>>) =>
     st.state === "downloading" ? `The AI detector is downloading for the first time (${st.percent}%, ${st.done_mb} of ${st.total_mb} MB). It only happens once; try again in a few minutes.`
       : st.state === "failed" ? `The AI detector's download failed: ${st.error}. Call ai_detector_status with download: true to try again.`
-        : st.state === "unavailable" ? `The AI detector isn't available on this computer (${st.reason}). Skip the AI score and say so in the notes.`
+        : st.state === "unavailable" ? `The AI detector couldn't start on this computer (${st.reason}). Posts can't be finished without their AI score: tell the user, and ask them to update or reinstall the extension.`
           : st.state === "not downloaded" ? "The AI detector isn't downloaded yet." : "";
 
   server.registerTool("detect_ai_text", {

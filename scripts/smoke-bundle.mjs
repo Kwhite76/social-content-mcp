@@ -39,8 +39,23 @@ if (reel.isError) throw new Error(`reel: ${reel.content[0].text}`);
 const r = JSON.parse(reel.content[0].text);
 if (!(r.seconds > 7 && fs.statSync(r.path).size > 10_000)) throw new Error(`reel looks wrong: ${JSON.stringify(r)}`);
 const det = await c.callTool({ name: "detect_ai_text", arguments: { text: "We roasted the Guji a little lighter this week and it tastes like peach tea now." } });
-const darwinX64 = process.platform === "darwin" && process.arch === "x64";
-if (det.isError && !(darwinX64 && /isn't available/.test(det.content[0].text))) throw new Error(`detector: ${det.content[0].text}`);
+if (det.isError) throw new Error(`detector: ${det.content[0].text}`);
 await c.close();
+
+// the WebAssembly fallback (used where the native runtime has no build) must work from the bundle too
+const wasm = new Client({ name: "smoke-wasm", version: "0" });
+await wasm.connect(new StdioClientTransport({
+  command: process.execPath,
+  args: [path.join(bundle, "dist", "cli.js"), "serve"],
+  env: { ...process.env, SCM_BRAND_KIT_DIR: kit, SCM_AUTO_KEEPER: "false", SCM_DETECTOR_URL: detUrl, SCM_DETECTOR_RUNTIME: "wasm",
+    SCM_STATE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), "smoke-state-")) },
+}));
+const detW = await wasm.callTool({ name: "detect_ai_text", arguments: { text: "We roasted the Guji a little lighter this week and it tastes like peach tea now." } });
+if (detW.isError) throw new Error(`detector (WebAssembly): ${detW.content[0].text}`);
+const st = JSON.parse((await wasm.callTool({ name: "ai_detector_status", arguments: {} })).content[0].text);
+if (st.runtime !== "wasm") throw new Error(`expected the WebAssembly runtime, got ${st.runtime}`);
+await wasm.close();
 srv.close();
-console.log(`bundle OK: ${tools.length} tools, reel ${r.seconds} s in ${r.renderMs} ms, detector ${det.isError ? "unavailable here (expected)" : JSON.parse(det.content[0].text).score_pct + "%"}`);
+const a = JSON.parse(det.content[0].text).score_pct, b = JSON.parse(detW.content[0].text).score_pct;
+if (a !== b) throw new Error(`native and WebAssembly scores differ: ${a} vs ${b}`);
+console.log(`bundle OK: ${tools.length} tools, reel ${r.seconds} s in ${r.renderMs} ms, detector ${a}% (native and WebAssembly agree)`);

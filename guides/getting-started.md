@@ -33,7 +33,7 @@ This guide covers everything from installing to your first post, and explains wh
 | **The reel maker** | Animates each finished post into a 1080x1920 reel in one of 14 motion styles, with short notes over close-ups and your logo at the end. Runs on your computer; nothing is uploaded anywhere. | Reels are saved in your brand kit's `output/` folder |
 | **The post log** | Remembers every post: its topic, format, angle, featured subjects, facts, background, layout and reel style. Each new batch is checked against it, so angles, subjects and facts don't repeat. | `history.jsonl` in your brand kit |
 | **Instagram Insights** (optional) | Reads how your recent posts did (reach, views, likes, comments, saves, shares, reel watch time, follower vs non-follower reach), so Claude can lean toward what works. Read-only. | Each pull is saved in your brand kit's `insights/` folder |
-| **AI-writing check** | A built-in AI-text detector (the desklib DeBERTa-v3 model) scores every caption sentence by sentence, and Claude rewords the sentences that read as AI-written until the caption is under your target (15% by default). It runs on your computer; the model (about 450 MB) downloads once, the first time it's used. | The model is kept in `.social-content-mcp/models` in your user folder |
+| **AI-writing check** | A built-in AI-text detector (the desklib DeBERTa-v3 model) scores every caption sentence by sentence, and Claude rewords the sentences that read as AI-written until the caption is under your target (15% by default). Every caption is scored before it's delivered; it isn't optional. It runs on your computer; the model (about 450 MB) downloads once. | The model is kept in `.social-content-mcp/models` in your user folder |
 | **Guides** | Step-by-step instructions Claude follows: *setup* (this guide, as an interview), *create_posts* (running a batch) and *connect_instagram* (step 7 on its own). Pick them from the prompts menu in Claude, or just ask. | Built into the extension |
 
 What you get for each post:
@@ -325,8 +325,9 @@ Every reel opens with its style's entrance (about 4 seconds), plays 3 to 7 close
 
 **AI-writing check**
 - *"The AI detector is downloading"*: the model downloads once (about 450 MB); try again in a few minutes.
-- *"The download failed"*: ask Claude to retry the AI detector download. It resumes checking from scratch and verifies the file.
-- *"Isn't available on this computer"*: the detector's engine has no build for Intel Macs. Everything else works; captions just aren't scored.
+- *"The download failed"*: ask Claude to retry the AI detector download; it verifies the file when it's done. Check your internet connection if it keeps failing.
+- *"Couldn't start on this computer"*: update or reinstall the extension. Posts aren't delivered as finished until their captions are scored.
+- *Scoring is slower on an Intel Mac*: the detector runs on a slower engine there (WebAssembly); the scores are the same.
 
 **Instagram**
 - *"The token isn't allowed to read insights" or "(#10) Application does not have permission"*: the configuration is missing **instagram_manage_insights**. Add it (7.3 and 7.4), generate a new token, paste it in.

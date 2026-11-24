@@ -38,6 +38,12 @@ if (fs.existsSync(ortBin))
     for (const a of fs.readdirSync(path.join(ortBin, p)))
       if (p !== platform || a !== arch) fs.rmSync(path.join(ortBin, p, a), { recursive: true, force: true });
 
+// onnxruntime-web is the WebAssembly fallback; Node only needs its node build and the plain wasm
+const ortWeb = path.join(stage, "node_modules", "onnxruntime-web", "dist");
+if (fs.existsSync(ortWeb))
+  for (const f of fs.readdirSync(ortWeb))
+    if (!/^(ort\.node\.min\.m?js|ort-wasm-simd-threaded\.(wasm|mjs))$/.test(f)) fs.rmSync(path.join(ortWeb, f), { recursive: true, force: true });
+
 const out = path.join(root, `social-content-mcp-${manifest.version}-${platform}-${arch}.mcpb`);
 run(`npx -y @anthropic-ai/mcpb pack "${stage}" "${out}"`);
 console.log(`\nBuilt ${out}\nDouble-click it to install in Claude Desktop.`);
