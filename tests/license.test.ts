@@ -13,8 +13,8 @@ const walk = (dir: string): string[] =>
 
 describe("license and credit", () => {
   it("ships the unmodified Apache 2.0 text and a NOTICE crediting Kwhite76", () => {
-    // md5 of the text published at apache.org/licenses/LICENSE-2.0.txt
-    expect(crypto.createHash("md5").update(fs.readFileSync(path.join(root, "LICENSE"))).digest("hex")).toBe("3b83ef96387f14655fc854ddc3c6bd57");
+    // md5 of the text published at apache.org/licenses/LICENSE-2.0.txt (git on Windows may check it out with CRLF)
+    expect(crypto.createHash("md5").update(read("LICENSE").replace(/\r\n/g, "\n")).digest("hex")).toBe("3b83ef96387f14655fc854ddc3c6bd57");
     expect(read("NOTICE")).toMatch(/Copyright 2026 Kwhite76/);
   });
 
