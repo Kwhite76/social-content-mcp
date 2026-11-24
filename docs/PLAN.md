@@ -50,4 +50,6 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   Python 40 s. Worker cap raised to 8, limited by free memory
 - [x] Packaging: `npm run pack` builds the .mcpb per OS; packed bundle smoke-tested (tools, kit, plan, 20 s reel)
 - [x] Hatchery brand kit with history migrated from the Drive log (Nov 23 - Dec 6)
-- [ ] Run a full Hatchery batch through v0 (Dec 7 - Dec 20)
+- [x] End to end in Claude Desktop on Jade's PC (2026-11-24, v0.1.2): penpot_status, render_post (Hatchery
+  Graphics board to 1080x1350 PNG), render_reel (29 s, 5 beats, pan) in 8.3 s with 6 worker threads
+- [ ] Run a full Hatchery batch through v0 (Dec 7 - Dec 20): needs the skill rewritten to use these tools
