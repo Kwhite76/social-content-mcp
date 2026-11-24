@@ -45,8 +45,11 @@ npm run pack                          # this computer's platform
 npm run pack -- --target darwin-x64   # or another (packaging only)
 ```
 
-Releases: push a tag like `v0.3.0`; the Release workflow builds and tests every platform's
-bundle and attaches them to the GitHub release.
+Releases: bump the version in `package.json` and `manifest.json`, then push a tag `vX.Y.Z`
+(or run the Release workflow from the Actions tab). It builds, tests and smoke-tests every
+platform's bundle and attaches them to the GitHub release. The AI detector's model has its own
+release, `detector-model-vN`, built by the Detector model workflow (see below); it only needs
+rebuilding when the model changes.
 
 ## Penpot keeper
 
@@ -55,8 +58,12 @@ its own Chrome or Edge window that is never put to sleep, keeps your file open a
 MCP whenever it drops.
 
 The extension starts it with the server, in a worker thread, restarts it if it crashes, and
-closes its browser when Claude Desktop quits or the extension is turned off. If a Penpot call
-fails while MCP is disconnected, the server waits for the keeper to reconnect and retries once.
+closes its browser when Claude Desktop quits or the extension is turned off. Every 30 seconds it
+checks Penpot's MCP menu, and every minute it makes a real test call through Penpot's MCP: the
+menu can say connected while the plugin has stopped answering, so two failed test calls in a row
+restart the browser. If a tool's Penpot call fails because the plugin is disconnected or stalled,
+the server asks the keeper to reconnect (a `RECONNECT` file), waits for a fresh connection and
+retries once.
 Only one keeper runs per computer (`keeper.lock`); to run it by hand instead, turn Auto-start
 keeper off and run:
 
@@ -80,6 +87,28 @@ frame and keeps memory flat: the canvas binding never returns the memory of pixe
 each segment's thread exits and the memory is reused. Threads, not subprocesses, because
 Claude Desktop's built-in Node can't start Node subprocesses.
 
+## AI-writing check
+
+`detect_ai_text` runs desklib/ai-text-detector-v1.01 (MIT; DeBERTa-v3-large, mean pooling, one
+logit) locally and scores like houtini-ai/ai-detect: split after `.`, `!` or `?` plus whitespace,
+skip sentences under 5 words, sigmoid per sentence, mean as a percentage. It's required: every
+caption is scored, and `log_post` needs the score.
+
+- **Model:** converted to ONNX by the Detector model workflow (`scripts/detector/export.py`), which
+  then runs `scripts/detector/parity.ts`: the Node tokenizer must match Python's token ids exactly
+  and the fp32 model must match PyTorch within 0.01 on `scripts/detector/samples.json`; the int8
+  model ships if it stays within 0.05 with no sentence changing sides of 0.5, else fp32. The files
+  and the parity report go on the `detector-model-v1` release. Push a `detector-model-vN` tag to
+  rebuild (and update the release name in `src/detect/detector.ts`).
+- **Download:** about 450 MB, once, on first use (or `ai_detector_status` with `download: true`),
+  checked against the manifest's SHA-256, kept in `~/.social-content-mcp/models`.
+- **Runtime:** onnxruntime-node, or onnxruntime-web's WebAssembly build where there's no native
+  binary (Intel Macs); same scores. `.npmrc` skips onnxruntime-node's optional CUDA download.
+  Bundles keep only their platform's native binaries and the one wasm build.
+- **Tests:** `tests/fixtures/detector` is a stand-in DeBERTa-v3-style tokenizer and tiny ONNX model
+  with Python's token ids and scores, so the tokenizer, truncation at 512 tokens, both runtimes,
+  the download and the checksum are all tested without the real model.
+
 ## Develop
 
 ```
@@ -92,6 +121,9 @@ npm run bench:reel       # times a ~29 s reel on this machine
 npm run spike:penpot     # with SCM_PENPOT_MCP_KEY set: checks the key reaches Penpot
 ```
 
-Settings (environment variables, filled in by the .mcpb settings screen):
+Settings (environment variables, filled in by the .mcpb settings screen; an unfilled
+`${user_config.x}` placeholder counts as empty):
 `SCM_BRAND_KIT_DIR`, `SCM_PENPOT_MCP_KEY`, `SCM_PENPOT_URL`, `SCM_INSTAGRAM_TOKEN`,
 `SCM_INSTAGRAM_ACCOUNT_ID`, `SCM_AUTO_KEEPER`, `SCM_OUTPUT_DIR`.
+For tests: `SCM_STATE_DIR` (instead of `~/.social-content-mcp`), `SCM_INSTAGRAM_API_BASE`,
+`SCM_DETECTOR_URL`, `SCM_DETECTOR_DIR`, `SCM_DETECTOR_RUNTIME=wasm`, `KEEPER_PROBE_TICKS`.

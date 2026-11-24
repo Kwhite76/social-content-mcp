@@ -53,6 +53,7 @@ You need:
 - **A computer** with Windows, macOS (Apple Silicon or Intel) or Linux
 - **Claude Desktop**, signed in
 - **Chrome or Edge** installed (Windows always has Edge). The keeper uses it to keep Penpot open.
+- **About 1 GB of free disk space**: the AI-writing check downloads its model (about 450 MB) once.
 - **A Penpot account** (free): design.penpot.app
 - For Instagram Insights (optional): an **Instagram professional account** (Business or Creator), a **Facebook account**, and a **business portfolio** (free; you can make one along the way)
 
