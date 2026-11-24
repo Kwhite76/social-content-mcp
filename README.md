@@ -30,7 +30,7 @@ You need a free Penpot account and Chrome or Edge (Windows already has Edge).
 | Brand kit | `init_brand_kit`, `analyze_brand_kit`, `save_brand_kit`, `add_brand_file` |
 | Planning and writing | `plan_batch`, `check_batch_plan` (repeat rules), `check_caption` (the brand's writing rules) |
 | History | `log_post`, `query_history` (`history.jsonl` in the kit) |
-| Instagram | `get_insights`: recent posts' reach, saves, shares, watch time and follower vs non-follower reach, matched to your logged posts (read-only; saved in the kit's insights/ folder) |
+| Instagram | `get_insights` (Unified login, Instagram login or Facebook login tokens): recent posts' reach, saves, shares, watch time and follower vs non-follower reach, matched to your logged posts (read-only; saved in the kit's insights/ folder) |
 | Penpot | `penpot_status`, `penpot_execute`, `penpot_upload_image`, `render_post` (board to PNG), through Penpot's hosted MCP with your key |
 | Reels | `render_reel`: 1080x1920, 14 motion styles, 3-7 beats with notes in your note style, ending on your logo |
 | Keeper | `keeper_start`, `keeper_status`: keeps Penpot's plugin connected; starts on its own |

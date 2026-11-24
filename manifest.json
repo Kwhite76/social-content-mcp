@@ -125,7 +125,7 @@
     "instagram_token": {
       "type": "string",
       "title": "Instagram access token (optional)",
-      "description": "From a Meta app with the Instagram API (Instagram login). Without it, Insights are skipped. The setup interview walks you through getting one; it's refreshed automatically.",
+      "description": "From a Meta app with the Instagram use case (Unified login on new apps, or Instagram login). Without it, Insights are skipped. The setup interview walks you through getting one.",
       "sensitive": true,
       "required": false
     },

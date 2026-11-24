@@ -104,6 +104,8 @@ describe("MCP server", () => {
       const send = (o: unknown, code = 200) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
       if (u.pathname === "/refresh_access_token") return send({ access_token: "IGnew", expires_in: 5184000 });
       if (u.pathname === "/v25.0/me") return send({ user_id: "17841", username: "harborcoffee", followers_count: 812 });
+      if (u.pathname === "/v25.0/me/assigned_instagram_accounts") return send({ data: [{ id: "17841", username: "harborcoffee" }] });
+      if (u.pathname === "/v25.0/17841") return send({ id: "17841", username: "harborcoffee", followers_count: 812 });
       if (u.pathname === "/v25.0/17841/media") return send({ data: media });
       if (u.pathname === "/v25.0/17841/insights")
         return send({ data: [{ name: "reach", total_value: { breakdowns: [{ results: [{ dimension_values: ["FOLLOWER"], value: 300 }, { dimension_values: ["NON_FOLLOWER"], value: 700 }] }] } }] });
@@ -137,6 +139,15 @@ describe("MCP server", () => {
       expect(seen).toContain("/refresh_access_token");
       expect(JSON.parse(fs.readFileSync(path.join(state, "instagram-token.json"), "utf8")).token).toBe("IGnew");
       expect(body(await c.callTool({ name: "get_insights", arguments: {} })).cached).toBe(true);
+
+      // Unified login (new Meta apps): a system-user token on the Facebook host, never refreshed
+      seen.length = 0;
+      const u = await connect({ SCM_BRAND_KIT_DIR: dir, SCM_INSTAGRAM_TOKEN: "EAAsystemuser", SCM_INSTAGRAM_API_BASE: `http://localhost:${port}`, SCM_STATE_DIR: state });
+      const ru = body(await u.callTool({ name: "get_insights", arguments: { refresh: true } }));
+      expect(ru.account).toEqual({ id: "17841", username: "harborcoffee", followers: 812 });
+      expect(ru.posts).toHaveLength(3);
+      expect(seen).toContain("/v25.0/me/assigned_instagram_accounts");
+      expect(seen).not.toContain("/refresh_access_token");
     } finally {
       srv.close();
     }

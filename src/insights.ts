@@ -5,9 +5,11 @@ import type { Entry } from "./history.js";
 
 /**
  * Instagram Insights through the official API, with the user's own token:
- * - an Instagram Login token (starts with "IG"): graph.instagram.com, the account is /me
- * - a Facebook Login token (Page or user, starts with "EAA"): graph.facebook.com, the account
- *   is the Instagram business account linked to the user's Page
+ * - Unified login (what new Meta apps get): a system-user token that never expires, on
+ *   graph.facebook.com; the account comes from /me/assigned_instagram_accounts
+ * - Instagram Login (older apps; token starts with "IG"): graph.instagram.com, the account is /me
+ * - Facebook Login (a user or Page token): graph.facebook.com, the account is the Instagram
+ *   business account linked to the user's Page
  * Reads only. Instagram Login tokens last 60 days; they're refreshed here every week, and the
  * fresh one is kept next to the app's other settings, so the user never pastes a new one.
  */
@@ -143,6 +145,27 @@ function groups(posts: PostInsights[], key: (p: PostInsights) => string | undefi
   })).sort((a, b) => b.avg_save_share_rate - a.avg_save_share_rate);
 }
 
+/** The Instagram account a graph.facebook.com token can see: Unified login first, then a Facebook Page. */
+async function facebookHostAccount(base: string, v: string, token: string): Promise<InsightsReport["account"]> {
+  type Acct = { id: string; username?: string; followers_count?: number };
+  try {
+    const assigned = await get<{ data: Acct[] }>(base, `${v}/me/assigned_instagram_accounts`, { fields: "id,username" }, token);
+    const a = assigned.data[0];
+    if (a) {
+      const more = await get<Acct>(base, `${v}/${a.id}`, { fields: "username,followers_count" }, token).catch(() => ({} as Partial<Acct>));
+      return { id: a.id, username: more.username ?? a.username, followers: more.followers_count };
+    }
+  } catch (e) {
+    if ((e as ApiError).code === 190) throw e;
+    // not a Unified login token: try a Facebook Page below
+  }
+  const pages = await get<{ data: Array<{ instagram_business_account?: Acct }> }>(
+    base, `${v}/me/accounts`, { fields: "instagram_business_account{id,username,followers_count}", limit: "50" }, token);
+  const a = pages.data.map((p) => p.instagram_business_account).find(Boolean);
+  if (!a) throw new Error("This token can't see an Instagram account. With Unified login, make sure the configuration shares your Instagram account and includes instagram_manage_insights.");
+  return { id: a.id, username: a.username, followers: a.followers_count };
+}
+
 /** Pulls the last `days` of posts and their insights. */
 export async function pullInsights(o: InsightsOptions, history: Entry[], days = 60, maxPosts = 30): Promise<InsightsReport> {
   const notes: string[] = [];
@@ -161,11 +184,7 @@ export async function pullInsights(o: InsightsOptions, history: Entry[], days = 
   } else if (o.accountId) {
     account = { id: o.accountId };
   } else {
-    const pages = await get<{ data: Array<{ instagram_business_account?: { id: string; username?: string; followers_count?: number } }> }>(
-      base, `${v}/me/accounts`, { fields: "instagram_business_account{id,username,followers_count}", limit: "50" }, token);
-    const a = pages.data.map((p) => p.instagram_business_account).find(Boolean);
-    if (!a) throw new Error("No Instagram business account is linked to a Facebook Page this token can see.");
-    account = { id: a.id, username: a.username, followers: a.followers_count };
+    account = await facebookHostAccount(base, v, token);
   }
 
   // the posts, newest first
@@ -204,6 +223,8 @@ export async function pullInsights(o: InsightsOptions, history: Entry[], days = 
         break;
       } catch (e) {
         if ((e as ApiError).code === 190) throw new Error(`Instagram rejected the token (${(e as Error).message}). Get a new one and paste it in the extension's settings.`);
+        if ((e as ApiError).code === 10 || /permission/i.test((e as Error).message))
+          throw new Error(`The token isn't allowed to read insights (${(e as Error).message}). Add instagram_manage_insights to the app's login configuration and generate a new token.`);
         p.error = (e as Error).message;
       }
     }
