@@ -52,7 +52,7 @@ It has no brand of its own: everything that makes posts yours lives in your bran
 flowchart TB
     kit["🎨 Your brand kit<br/>voice · look · topics"]
     ins["📊 Instagram Insights<br/>optional, read-only"]
-    log["🗂️ Post log<br/>so nothing repeats"]
+    log["🗂️ Post log<br/>every post, so nothing repeats"]
 
     subgraph claude ["Claude + the extension"]
       direction LR
@@ -62,8 +62,7 @@ flowchart TB
     kit --> claude
     ins --> claude
     log --> claude
-    claude --> out["📦 Image, reel, caption, Story<br/>ready for you to post"]
-    claude -. logged .-> log
+    claude --> out["📦 Image, reel, caption, Story<br/>ready for you to post, and logged"]
 
     classDef src fill:#F4F1EA,stroke:#BDB5A3,color:#1B1A2E
     classDef step fill:#7C6CF2,stroke:#5B4BD6,color:#ffffff
