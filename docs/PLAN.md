@@ -87,7 +87,9 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] v0.3.2: Claude Desktop passes an optional setting left empty as its literal placeholder
   ("${user_config.instagram_account_id}"); settings like that now count as blank. Keeper logs its first
   successful test call, so the probe can be seen working
-- [ ] Real Instagram token test (`get_insights` against the live API)
-- [ ] `penpot_upload_image` on real Penpot
+- [x] Live on Jade's PC (v0.3.2, 2026-11-24): `get_insights` with a Unified login token and the account ID
+  setting left empty pulled 25 posts with all metrics and follower vs non-follower reach; the keeper's
+  test call logged as working; a stalled plugin right after startup was caught by penpot_status, which
+  asked the keeper to reconnect and retried successfully
 - [ ] A new user runs setup end to end
 
