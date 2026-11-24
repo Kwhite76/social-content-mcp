@@ -1,9 +1,14 @@
 name: Release
-# Push a tag like v0.3.0: builds the extension for each platform and attaches it to a GitHub release.
+# Push a tag like v0.3.0, or run it from the Actions tab with the version: builds the extension
+# for each platform and attaches it to a GitHub release (creating the tag if needed).
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v0.3.0 (default: v + package.json version)"
+        required: false
 
 permissions:
   contents: write
@@ -13,12 +18,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - id: tag
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then t="$GITHUB_REF_NAME"
+          elif [ -n "${{ inputs.tag }}" ]; then t="${{ inputs.tag }}"
+          else t="v$(node -p 'require("./package.json").version')"; fi
+          echo "tag=$t" >> "$GITHUB_OUTPUT"
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
 
   build:
     needs: release
@@ -54,4 +68,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" social-content-mcp-*-${{ matrix.target }}.mcpb --clobber
+        run: gh release upload "${{ needs.release.outputs.tag }}" social-content-mcp-*-${{ matrix.target }}.mcpb --clobber
