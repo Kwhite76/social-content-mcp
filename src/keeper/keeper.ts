@@ -23,6 +23,9 @@ const CONFIG = path.join(KEEPER_DIR, "config.json");
 const PROFILE = path.join(KEEPER_DIR, "browser-profile");
 export const KEEPER_LOG = path.join(KEEPER_DIR, "keeper.log");
 const PAUSE = path.join(KEEPER_DIR, "PAUSE");
+const RECONNECT = path.join(KEEPER_DIR, "RECONNECT");
+/** how many checks between test calls through Penpot's MCP (KEEPER_PROBE_TICKS=0 turns them off) */
+const PROBE_EVERY = Number(process.env.KEEPER_PROBE_TICKS ?? 2);
 const STATUS = path.join(KEEPER_DIR, "status.json");
 const LOCK = path.join(KEEPER_DIR, "keeper.lock");
 const LOCK_STALE_MS = 120_000;
@@ -84,8 +87,20 @@ function releaseLock() {
   } catch {}
 }
 
-function writeStatus(state: KeeperState, headless: boolean) {
-  try { fs.writeFileSync(STATUS, JSON.stringify({ state, headless, at: new Date().toISOString(), pid: process.pid })); } catch {}
+/** since: when the browser was last (re)started, so a caller can wait for a fresh connection */
+function writeStatus(state: KeeperState, headless: boolean, since?: number) {
+  try { fs.writeFileSync(STATUS, JSON.stringify({ state, headless, since, at: new Date().toISOString(), pid: process.pid })); } catch {}
+}
+
+/**
+ * Asks the running keeper (in this process or another) to restart its browser and reconnect,
+ * for when Penpot's server says the plugin stopped answering but the page still looks connected.
+ * Returns the time of the request: wait for a keeper status whose since is later.
+ */
+export function requestReconnect(): number {
+  const now = Date.now();
+  try { fs.mkdirSync(KEEPER_DIR, { recursive: true }); fs.writeFileSync(RECONNECT, String(now)); } catch {}
+  return now;
 }
 
 /**
@@ -283,7 +298,12 @@ const withTimeout = <T>(p: Promise<T>, ms: number, what: string) =>
  */
 export async function runKeeper(
   penpotUrl = "https://design.penpot.app/",
-  opts: { signal?: AbortSignal; by?: string } = {},
+  opts: {
+    signal?: AbortSignal;
+    by?: string;
+    /** a real call through Penpot's MCP; throws if the plugin doesn't answer */
+    probe?: () => Promise<void>;
+  } = {},
 ) {
   const by = opts.by ?? "command line";
   acquireLock(by); // throws KeeperBusy if another keeper is running
@@ -295,6 +315,10 @@ export async function runKeeper(
   let ctx: BrowserContext | null = null;
   let page!: Page;
   let headless = false;
+  let state: KeeperState = "starting";
+  let since = Date.now();
+  let restartWanted = false;
+  let checks = 0, probeFails = 0;
 
   const wantHeadless = () =>
     process.env.KEEPER_HEADLESS === "1" || (!!cfg.fileUrl && process.env.KEEPER_HEADED !== "1");
@@ -306,6 +330,8 @@ export async function runKeeper(
   };
 
   const start = async (forceWindow = false) => {
+    since = Date.now();
+    state = "starting";
     await closeBrowser();
     headless = !forceWindow && wantHeadless();
     const c = await launch(headless);
@@ -334,7 +360,7 @@ export async function runKeeper(
   const shutdown = async () => {
     clearInterval(beat);
     await closeBrowser();
-    writeStatus("stopped", headless);
+    writeStatus("stopped", headless, since);
     releaseLock();
     log("Keeper stopped.");
   };
@@ -357,10 +383,13 @@ export async function runKeeper(
     throw e;
   }
   let tries = 0;
-  let state: KeeperState = "starting";
 
   const tick = async () => {
-    if (!ctx || page.isClosed()) {
+    if (fs.existsSync(RECONNECT)) {
+      try { fs.rmSync(RECONNECT, { force: true }); } catch {}
+      log("Asked to reconnect: a Penpot call failed although the page looked connected. Restarting the browser.");
+      restartWanted = true;
+    } else if (!ctx || page.isClosed()) {
       log("The keeper's browser closed. Reopening it.");
       await start(); tries = 0;
     } else if (!(await alive(page))) {
@@ -378,6 +407,22 @@ export async function runKeeper(
     } else if (await isConnected(page)) {
       if (state !== "connected") log("MCP connected.");
       state = "connected"; tries = 0;
+      // the dot can say connected while the plugin has stopped answering Penpot's server,
+      // so every few checks make a real call through Penpot's MCP
+      if (opts.probe && PROBE_EVERY > 0 && ++checks % PROBE_EVERY === 0) {
+        try {
+          await withTimeout(opts.probe(), 25_000, "test call");
+          probeFails = 0;
+        } catch (e) {
+          probeFails++;
+          log(`Test call through Penpot's MCP failed (${probeFails}): ${(e as Error).message.split("\n")[0].slice(0, 160)}`);
+          if (probeFails >= 2) {
+            log("Penpot's plugin isn't answering. Restarting the browser.");
+            probeFails = 0;
+            restartWanted = true;
+          }
+        }
+      }
     } else {
       if (state === "connected") log("MCP connection dropped.");
       state = "down";
@@ -401,7 +446,13 @@ export async function runKeeper(
       await start().catch((err) => log(`Couldn't restart the browser: ${(err as Error).message.split("\n")[0]}`));
       tries = 0;
     }
-    writeStatus(state, headless);
+    if (restartWanted && !stopped()) {
+      restartWanted = false;
+      await start().catch((err) => log(`Couldn't restart the browser: ${(err as Error).message.split("\n")[0]}`));
+      tries = 0;
+      continue; // check the fresh page straight away
+    }
+    writeStatus(state, headless, since);
     await nap(CHECK_EVERY_MS);
   }
   await shutdown();
@@ -412,6 +463,8 @@ export interface KeeperStatus {
   state: KeeperState | "not running";
   /** who runs it: the extension or the command line */
   owner: string | null;
+  /** when the keeper's browser was last (re)started (ms) */
+  since?: number;
   lastLines: string[];
 }
 
@@ -419,10 +472,12 @@ export interface KeeperStatus {
 export function keeperStatus(lines = 15): KeeperStatus {
   const owner = lockOwner();
   let state: KeeperStatus["state"] = "not running";
+  let since: number | undefined;
   if (owner) {
     try {
-      const st = JSON.parse(fs.readFileSync(STATUS, "utf8")) as { state: KeeperState | null };
+      const st = JSON.parse(fs.readFileSync(STATUS, "utf8")) as { state: KeeperState | null; since?: number };
       state = st.state && st.state !== "stopped" ? st.state : "starting";
+      since = st.since;
     } catch {
       state = "starting";
     }
@@ -433,5 +488,5 @@ export function keeperStatus(lines = 15): KeeperStatus {
   } catch {
     lastLines = ["The keeper hasn't run on this computer yet."];
   }
-  return { running: !!owner, state, owner: owner?.by ?? null, lastLines };
+  return { running: !!owner, state, owner: owner?.by ?? null, since, lastLines };
 }

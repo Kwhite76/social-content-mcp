@@ -9,7 +9,7 @@ import type { Config } from "./config.js";
 import { GUIDES, readGuide, type GuideName } from "./guides.js";
 import { appendHistory, EntryObject, readHistory } from "./history.js";
 import { cachedInsights, pullInsights, saveInsights } from "./insights.js";
-import { keeperStatus } from "./keeper/keeper.js";
+import { keeperStatus, requestReconnect } from "./keeper/keeper.js";
 import type { KeeperSupervisor } from "./keeper/supervisor.js";
 import { PenpotBridge } from "./penpot.js";
 import { checkPlan, planBatch } from "./plan.js";
@@ -21,6 +21,8 @@ const VERSION: string = createRequire(import.meta.url)("../package.json").versio
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 const fail = (message: string) => ({ isError: true, content: [{ type: "text" as const, text: message }] });
 const today = () => new Date().toISOString().slice(0, 10);
+/** how Penpot's MCP reports a plugin that stopped answering */
+export const PLUGIN_STALLED = /suspended|heartbeat|no plugin|plugin (is )?not connected|not connected to (the )?plugin/i;
 
 const INSTRUCTIONS = `Social Content plans, designs and renders social media posts from the user's own brand kit (a folder with brand.yaml, pillars.yaml, a logo, example posts and voice notes), builds the images in the user's Penpot, renders 20-30 s reels and keeps a log so nothing repeats.
 - Start every session with analyze_brand_kit.
@@ -50,23 +52,38 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
           : null;
 
   /**
-   * Runs a Penpot call; if it fails while the plugin isn't connected, gets the keeper going,
-   * waits for it to reconnect and tries once more. A failure while connected is the code's own.
+   * Runs a Penpot call. If it fails because the plugin isn't connected, or Penpot says the plugin
+   * stopped answering while the page still looks connected, gets the keeper to (re)connect, waits
+   * for a fresh connection and tries once more. Any other failure is the code's own.
    */
   const withPenpot = async <T>(call: () => Promise<T>): Promise<T> => {
     try {
       return await call();
     } catch (e) {
+      const msg = (e as Error).message;
+      const stalled = PLUGIN_STALLED.test(msg);
       const before = keeperStatus(1);
-      if (!keeper || before.state === "connected" || before.state === "paused") throw e;
-      keeper.start();
-      const st = await keeper.waitReady(150_000);
+      if (before.state === "paused" || (before.state === "connected" && !stalled)) throw e;
+      if (!keeper && !before.running) throw e;
+      const asked = before.state === "connected" ? requestReconnect() : undefined;
+      keeper?.start();
+      const st = await waitForKeeper(150_000, asked);
       if (st.state !== "connected") {
         const hint = keeperHint(st) ?? `The keeper couldn't reconnect Penpot yet (state: ${st.state}). Last log: ${st.lastLines.slice(-3).join(" | ")}`;
-        throw new Error(`${(e as Error).message}\n${hint}`);
+        throw new Error(`${msg}\n${hint}`);
       }
-      await new Promise((r) => setTimeout(r, 2000)); // let the plugin settle
+      await new Promise((r) => setTimeout(r, 3000)); // let the plugin settle
       return await call();
+    }
+  };
+
+  const waitForKeeper = async (ms: number, after?: number) => {
+    if (keeper) return keeper.waitReady(ms, after);
+    const deadline = Date.now() + ms;
+    for (;;) {
+      const st = keeperStatus(8);
+      if ((st.state === "connected" && (!after || (st.since ?? 0) > after)) || st.state === "needs_sign_in" || Date.now() >= deadline) return st;
+      await new Promise((r) => setTimeout(r, 2000));
     }
   };
 
@@ -345,10 +362,12 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
     if (!fs.existsSync(p)) return fail(`file not found: ${p}`);
     const mime = /\.png$/i.test(p) ? "image/png" : /\.webp$/i.test(p) ? "image/webp" : /\.jpe?g$/i.test(p) ? "image/jpeg" : null;
     if (!mime) return fail("Use a PNG, JPEG or WebP image.");
-    const data = fs.readFileSync(p);
-    if (data.length > 8_000_000) return fail("That image is over 8 MB; use a smaller copy.");
     try {
-      return { content: [{ type: "text" as const, text: await withPenpot(() => penpot.execute(uploadCode(data, mime, name ?? path.basename(p), storage_key))) }] };
+      // big photos are shrunk first: a post is 1080 px wide, and every byte crosses Penpot's MCP in pieces
+      const fit = await fitImage(fs.readFileSync(p), mime);
+      let last = "";
+      for (const step of uploadSteps(fit.data, fit.mime, name ?? path.basename(p), storage_key)) last = await withPenpot(() => penpot.execute(step));
+      return { content: [{ type: "text" as const, text: last }] };
     } catch (e) {
       return fail((e as Error).message);
     }
@@ -445,9 +464,22 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
   return server;
 }
 
-/** Plugin code that uploads image bytes to the open Penpot file and keeps the result in storage. */
-export function uploadCode(data: Buffer, mime: string, name: string, key: string): string {
-  return `const b64 = ${JSON.stringify(data.toString("base64"))};
+const CHUNK = 60_000; // Penpot's hosted MCP refuses request bodies over about 100 KB
+
+/**
+ * The plugin calls that upload image bytes to the open Penpot file, each small enough for
+ * Penpot's hosted MCP: the base64 text is sent in pieces into the plugin's storage, then the
+ * last call decodes it, uploads it and keeps the result in storage[key].
+ */
+export function uploadSteps(data: Buffer, mime: string, name: string, key: string): string[] {
+  const b64 = data.toString("base64");
+  const buf = `storage[${JSON.stringify("__upload_" + key)}]`;
+  const steps = [`${buf} = ""; return 0;`];
+  for (let i = 0; i < b64.length; i += CHUNK)
+    steps.push(`${buf} += ${JSON.stringify(b64.slice(i, i + CHUNK))}; return ${buf}.length;`);
+  steps.push(`const b64 = ${buf};
+delete ${buf};
+if (b64.length !== ${b64.length}) throw new Error("upload incomplete: " + b64.length + " of ${b64.length}");
 const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
 const out = new Uint8Array((b64.length / 4) * 3 - pad);
@@ -459,5 +491,21 @@ for (let i = 0, j = 0; i < b64.length; i += 4) {
 }
 const img = await penpot.uploadMediaData(${JSON.stringify(name)}, out, ${JSON.stringify(mime)});
 storage[${JSON.stringify(key)}] = img;
-return { storage_key: ${JSON.stringify(key)}, id: img.id, width: img.width, height: img.height };`;
+return { storage_key: ${JSON.stringify(key)}, id: img.id, width: img.width, height: img.height };`);
+  return steps;
+}
+
+/** Shrinks an image to at most maxSide pixels on its longest side (PNG keeps transparency; others become JPEG). */
+export async function fitImage(data: Buffer, mime: string, maxSide = 2048): Promise<{ data: Buffer; mime: string; width: number; height: number }> {
+  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+  const img = await loadImage(data);
+  const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+  if (k === 1 && data.length <= 1_500_000) return { data, mime, width: img.width, height: img.height };
+  const w = Math.round(img.width * k), h = Math.round(img.height * k);
+  const c = createCanvas(w, h), x = c.getContext("2d");
+  x.imageSmoothingQuality = "high";
+  x.drawImage(img, 0, 0, w, h);
+  return mime === "image/png"
+    ? { data: await c.encode("png"), mime, width: w, height: h }
+    : { data: await c.encode("jpeg", 90), mime: "image/jpeg", width: w, height: h };
 }

@@ -18,7 +18,11 @@ export class KeeperSupervisor {
   private retry: NodeJS.Timeout | null = null;
   private watchdog: NodeJS.Timeout | null = null;
 
-  constructor(private penpotUrl: string, private log: (msg: string) => void = (m) => console.error(m)) {}
+  constructor(
+    private penpotUrl: string,
+    private bridge: { url?: string; key?: string } = {},
+    private log: (msg: string) => void = (m) => console.error(m),
+  ) {}
 
   /** Starts the keeper unless one is already running here or elsewhere. Safe to call often. */
   start(): "started" | "already running" | "running elsewhere" {
@@ -32,7 +36,7 @@ export class KeeperSupervisor {
     const here = fileURLToPath(import.meta.url);
     const isTs = here.endsWith(".ts");
     const w = new Worker(path.join(path.dirname(here), isTs ? "worker.ts" : "worker.js"), {
-      workerData: { penpotUrl: this.penpotUrl },
+      workerData: { penpotUrl: this.penpotUrl, bridgeUrl: this.bridge.url, penpotKey: this.bridge.key },
       execArgv: isTs ? ["--import", "tsx"] : [],
       stdout: true, // stdout belongs to MCP: anything the thread prints goes to stderr
     });
@@ -54,12 +58,16 @@ export class KeeperSupervisor {
 
   get running() { return this.worker !== null; }
 
-  /** Waits until the keeper reports connected (or needs a sign-in, or time runs out). */
-  async waitReady(ms: number): Promise<KeeperStatus> {
+  /**
+   * Waits until the keeper reports connected (or needs a sign-in, or time runs out).
+   * With after, only a connection made after that time counts (a fresh browser).
+   */
+  async waitReady(ms: number, after?: number): Promise<KeeperStatus> {
     const deadline = Date.now() + ms;
     for (;;) {
       const st = keeperStatus(8);
-      if (st.state === "connected" || st.state === "needs_sign_in" || st.state === "paused" || Date.now() >= deadline) return st;
+      const fresh = !after || (st.since ?? 0) > after;
+      if ((st.state === "connected" && fresh) || st.state === "needs_sign_in" || st.state === "paused" || Date.now() >= deadline) return st;
       if (!st.running && !this.worker && !this.retry) this.start();
       await new Promise((r) => setTimeout(r, 2000));
     }

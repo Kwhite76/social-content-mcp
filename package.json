@@ -1,6 +1,6 @@
 {
   "name": "social-content-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Brand kit in, on-brand posts and reels out: an MCP server that interviews you about your brand, designs posts in Penpot, renders 20-30 s reels, reads Instagram Insights and keeps a history so nothing repeats.",
   "main": "dist/index.js",
   "scripts": {

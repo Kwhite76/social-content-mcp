@@ -11,7 +11,7 @@ const cfg = loadConfig();
 if (cmd === "serve") {
   const { KeeperSupervisor } = await import("./keeper/supervisor.js");
   // the keeper needs the key to be useful, and can be turned off in the extension settings
-  const keeper = cfg.autoKeeper && cfg.penpotKey ? new KeeperSupervisor(cfg.penpotUrl + "/") : undefined;
+  const keeper = cfg.autoKeeper && cfg.penpotKey ? new KeeperSupervisor(cfg.penpotUrl + "/", { url: cfg.penpotUrl, key: cfg.penpotKey }) : undefined;
   const server = createServer(cfg, { keeper });
   await server.connect(new StdioServerTransport());
   keeper?.start();
@@ -28,7 +28,11 @@ if (cmd === "serve") {
   for (const sig of ["SIGINT", "SIGTERM", "SIGBREAK", "SIGHUP"] as const) process.on(sig, quit);
 } else if (cmd === "keeper") {
   try {
-    await runKeeper(cfg.penpotUrl + "/");
+    const { PenpotBridge } = await import("./penpot.js");
+    const bridge = cfg.penpotKey ? new PenpotBridge(cfg.penpotUrl, cfg.penpotKey) : undefined;
+    await runKeeper(cfg.penpotUrl + "/", {
+      probe: bridge ? async () => { try { await bridge.execute("return 1;"); } catch (e) { await bridge.close(); throw e; } } : undefined,
+    });
   } catch (e) {
     if (e instanceof KeeperBusy) {
       console.error(`${e.message} Nothing to do: Penpot is already being kept connected.`);

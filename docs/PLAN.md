@@ -75,7 +75,11 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   `add_brand_file`, `check_caption`, `penpot_upload_image`; server instructions point new users to setup
 - [x] Release workflow: per-platform .mcpb (win32-x64, darwin-arm64, darwin-x64, linux-x64) on a tag,
   tested and smoke-tested per platform; cross-packing checked locally (darwin-arm64 binaries)
-- [ ] First release run on GitHub, and install from the release on a fresh Windows machine
+- [x] First release (v0.3.0) built on GitHub and installed from the release on Jade's PC; Hatchery kit validates under it
+- [x] v0.3.1: `penpot_upload_image` sends images in 60 KB pieces (Penpot's hosted MCP refuses bodies over ~100 KB)
+  and shrinks big ones to 2048 px first. Keeper makes a real test call through Penpot's MCP every minute and
+  restarts the browser after two failures (seen on real Penpot: dot "connected", plugin "suspended"); a tool call
+  that hits a stalled plugin asks the keeper to reconnect, waits for a fresh connection and retries once
 - [ ] Real Instagram token test (`get_insights` against the live API)
 - [ ] `penpot_upload_image` on real Penpot
 - [ ] A new user runs setup end to end
