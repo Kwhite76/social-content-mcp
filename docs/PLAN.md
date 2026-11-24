@@ -41,7 +41,8 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] Rotation planner (`plan_batch`) and repeat checker (`check_batch_plan`)
 - [x] Local log (`log_post`, `query_history`)
 - [x] Penpot bridge (`penpot_status`, `penpot_execute`, `render_post`)
-- [x] Keeper (`social-content-mcp keeper`, `keeper_status`), e2e-tested against a mock of Penpot's MCP menu
+- [x] Keeper (`social-content-mcp keeper`, `keeper_status`), e2e-tested against a mock of Penpot's MCP menu;
+  verified on real Penpot 2026-11-23 (sign-in, file remembered, MCP connected)
 - [x] Spike on a real account (2026-11-23): a plain MCP client reaches Penpot's hosted MCP with just the user's MCP key
 - [x] `render_reel`: 14 styles and beats ported to Node; matches the Python renderer (mean pixel
   difference 1-6 of 255 across all styles); parallel segment workers; check frames
