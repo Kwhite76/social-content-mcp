@@ -1,0 +1,68 @@
+{
+  "manifest_version": "0.3",
+  "name": "social-content-mcp",
+  "display_name": "Social Content",
+  "version": "0.1.0",
+  "description": "Brand kit in, on-brand posts and reels out.",
+  "long_description": "Plans engagement posts from your brand kit and post history, builds the images in Penpot, renders 20-30 s reels and keeps a local log so nothing repeats. Bring your own Penpot MCP key, AI detector and (optionally) an Instagram token.",
+  "author": { "name": "Kwhite76" },
+  "server": {
+    "type": "node",
+    "entry_point": "dist/cli.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/cli.js", "serve"],
+      "env": {
+        "SCM_BRAND_KIT_DIR": "${user_config.brand_kit_dir}",
+        "SCM_PENPOT_URL": "${user_config.penpot_url}",
+        "SCM_PENPOT_MCP_KEY": "${user_config.penpot_mcp_key}",
+        "SCM_INSTAGRAM_TOKEN": "${user_config.instagram_token}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "init_brand_kit", "description": "Create the brand kit folder layout" },
+    { "name": "analyze_brand_kit", "description": "Check the brand kit" },
+    { "name": "plan_batch", "description": "Plan a batch from the rotation and history" },
+    { "name": "check_batch_plan", "description": "Check a plan for repeats" },
+    { "name": "log_post", "description": "Log a finished post" },
+    { "name": "query_history", "description": "Read the post history" },
+    { "name": "penpot_status", "description": "Check the Penpot connection" },
+    { "name": "penpot_execute", "description": "Run code in Penpot" },
+    { "name": "render_post", "description": "Export a post image" },
+    { "name": "keeper_status", "description": "Check the Penpot keeper" }
+  ],
+  "user_config": {
+    "brand_kit_dir": {
+      "type": "directory",
+      "title": "Brand kit folder",
+      "description": "Folder with logo/, style/, assets/, voice/, brand.yaml and pillars.yaml. Run init_brand_kit to create it.",
+      "required": true
+    },
+    "penpot_mcp_key": {
+      "type": "string",
+      "title": "Penpot MCP key",
+      "description": "Penpot: Your account > Integrations > MCP Server.",
+      "sensitive": true,
+      "required": true
+    },
+    "penpot_url": {
+      "type": "string",
+      "title": "Penpot address",
+      "description": "Only change this for a self-hosted Penpot.",
+      "default": "https://design.penpot.app",
+      "required": false
+    },
+    "instagram_token": {
+      "type": "string",
+      "title": "Instagram Graph API token (optional)",
+      "description": "Without it, the Insights step is skipped.",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["win32", "darwin", "linux"],
+    "runtimes": { "node": ">=20.0.0" }
+  }
+}

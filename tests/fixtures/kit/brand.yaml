@@ -1,0 +1,8 @@
+name: The Hatchery
+handle: thehatcherycards
+platforms: [instagram]
+voice: first person, one fan talking to other fans
+never_mention: [eBay, Misprint, TCGplayer, shop, store, link, bio, price, buy, sale, listing]
+hashtags: { min: 2, max: 4 }
+caption_words: { min: 30, max: 220 }
+ai_score_target: 0.15

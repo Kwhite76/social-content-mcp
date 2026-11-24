@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Mimics Penpot's workspace MCP toolbar menu (frontend/src/app/main/ui/components/mcp_menu.cljs) -->
+<html><body>
+<ul><li><button data-testid="mcp-btn" aria-haspopup="true"><div><span id="dot" class="mcp__toolbar-mcp-button-dot"></span><span class="mcp__toolbar-mcp-button-label">MCP</span></div></button>
+<ul id="menu" style="display:none"></ul></li></ul>
+<script>
+let requested = false, connected = false;
+const dot = document.getElementById('dot'), menu = document.getElementById('menu');
+function render() {
+  dot.className = 'mcp__toolbar-mcp-button-dot' + (connected ? ' mcp__connected' : '');
+  menu.innerHTML = (connected ? '<li role="presentation"><span>MCP connected</span></li>' : '') +
+    '<li role="menuitem" tabindex="0" id="act">' + (requested ? 'Disconnect' : 'Connect') + '</li>';
+  document.getElementById('act').onclick = () => {
+    if (requested) { requested = false; connected = false; }
+    else { requested = true; setTimeout(() => { connected = true; render(); }, 1000); }
+    menu.style.display = 'none'; render();
+  };
+}
+document.querySelector('[data-testid=mcp-btn]').onclick = () => { menu.style.display = menu.style.display == 'none' ? 'block' : 'none'; render(); };
+document.addEventListener('keydown', e => { if (e.key == 'Escape') menu.style.display = 'none'; });
+// the connection drops and Penpot gives up after 8 s, like a discarded tab
+setTimeout(() => { connected = false; requested = false; render(); }, 8000);
+render();
+</script></body></html>

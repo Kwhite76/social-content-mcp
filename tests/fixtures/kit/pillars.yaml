@@ -1,0 +1,23 @@
+anchor_date: 2026-11-23
+topics: [Pokémon, One Piece, Riftbound]
+formats:
+  - name: This or That
+  - name: Did You Know
+  - name: Deck Challenge
+  - name: Throwback / History
+  - name: Hot Take
+  - name: Collector Q
+  - name: Community / Event
+  - name: Guess It
+  - name: Set Talk
+  - name: Art & Artists
+  - name: History of a Thing
+  - name: Rank It
+  - name: Pull Stories
+  - name: Lore Drop
+textures:
+  - { name: Kraft cardboard, url: https://www.photos-public-domain.com/wp-content/uploads/2011/01/cardboard-texture.jpg, text_colors: { main: "#2D251B" } }
+  - { name: Dark red wood, url: https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dark_wood/dark_wood_diff_2k.jpg, text_colors: { main: "#F6EEDD", accent: "#FFD27A" } }
+  - { name: Dark walnut, url: https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_table_001/wood_table_001_diff_2k.jpg, text_colors: { main: "#F6EEDD", warning: "#FF8A7A" } }
+  - { name: Light plywood, url: https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plywood/plywood_diff_2k.jpg, text_colors: { main: "#1E1E1E", warning: "#B3261E" } }
+layouts: [two cards side by side, card left notes right, card right notes left, centered card notes under, three cards fanned, tight art crop]
