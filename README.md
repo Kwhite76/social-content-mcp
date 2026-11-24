@@ -100,7 +100,7 @@ caption is scored, and `log_post` needs the score.
   model ships if it stays within 0.05 with no sentence changing sides of 0.5, else fp32. The files
   and the parity report go on the `detector-model-v1` release. Push a `detector-model-vN` tag to
   rebuild (and update the release name in `src/detect/detector.ts`).
-- **Download:** about 450 MB, once, on first use (or `ai_detector_status` with `download: true`),
+- **Download:** about 1.7 GB, once, on first use (or `ai_detector_status` with `download: true`),
   checked against the manifest's SHA-256, kept in `~/.social-content-mcp/models`.
 - **Runtime:** onnxruntime-node, or onnxruntime-web's WebAssembly build where there's no native
   binary (Intel Macs); same scores. `.npmrc` skips onnxruntime-node's optional CUDA download.

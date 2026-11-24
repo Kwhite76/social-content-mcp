@@ -352,12 +352,16 @@ export async function runKeeper(
     state = "starting";
     await closeBrowser();
     headless = !forceWindow && wantHeadless();
+    const t0 = Date.now();
     const c = await launch(headless);
+    log(`Browser started (${((Date.now() - t0) / 1000).toFixed(1)} s).`);
     ctx = c;
     c.on("close", () => { if (ctx === c) ctx = null; });
     page = c.pages()[0] ?? (await c.newPage());
     if (headless) {
-      await page.goto(cfg.fileUrl!, { waitUntil: "domcontentloaded" }).catch(() => {});
+      const t1 = Date.now();
+      await page.goto(cfg.fileUrl!, { waitUntil: "domcontentloaded" }).catch((e: Error) => log(`Opening the design file failed: ${e.message.split("\n")[0]}`));
+      log(`Opened the design file (${((Date.now() - t1) / 1000).toFixed(1)} s).`);
       await sleep(3000);
       if (isLogin(page.url())) {
         log("Penpot wants you to sign in again. Opening a window for that.");

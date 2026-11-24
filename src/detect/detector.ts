@@ -10,7 +10,7 @@ import path from "node:path";
  * by whitespace, skip sentences under 5 words, score each (sigmoid of the logit), and report the
  * mean of the scored sentences as a percentage.
  *
- * The model (about 450 MB) isn't in the extension: it's downloaded once, on first use, from the
+ * The model (about 1.7 GB) isn't in the extension: it's downloaded once, on first use, from the
  * project's GitHub release, checked against its SHA-256, and kept in the app folder.
  *
  * It runs on onnxruntime-node where that has a build, and on onnxruntime-web (WebAssembly) where it

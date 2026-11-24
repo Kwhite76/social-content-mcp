@@ -7,7 +7,7 @@ Arguments (all optional): `start` (YYYY-MM-DD; default the day after the last lo
 ## Step 0: Preflight
 1. `analyze_brand_kit`. If it reports problems, stop, show them, and offer to fix them with the setup guide (`get_guide` name `setup`).
 2. `keeper_start`, then `penpot_status`. The open file should be the brand's `design.penpot_file` (if set). If the keeper reports `needs_sign_in`, tell the user once: a Penpot window opened on their computer; sign in there. Carry on with Steps 1 to 3 and check again before the first image. If Penpot still isn't connected when images are due, deliver the posts without images or reels and say why at the top.
-3. `ai_detector_status` with `download: true`. Every caption is scored by the AI-writing check before it's delivered; this makes sure its model (a one-time download of about 450 MB) is downloading or ready while you plan and write. If it reports `failed`, call it again with `download: true`; if it fails again, tell the user why before going on.
+3. `ai_detector_status` with `download: true`. Every caption is scored by the AI-writing check before it's delivered; this makes sure its model (a one-time download of about 1.7 GB) is downloading or ready while you plan and write. If it reports `failed`, call it again with `download: true`; if it fails again, tell the user why before going on.
 4. Read every file in the kit's voice/ folder, and look at the images in style/. They set the voice and the look.
 
 ## Step 1: Plan

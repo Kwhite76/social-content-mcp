@@ -98,7 +98,7 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] v0.4.0: AI-writing check built in. desklib/ai-text-detector-v1.01 (MIT, DeBERTa-v3-large) converted to
   ONNX by the Detector model workflow, which checks the Node tokenizer id for id and the scores against
   PyTorch, and ships int8 if it stays within 0.05 with no label changes (else fp32). onnxruntime-node and a
-  pure-JS tokenizer run it locally; scoring matches houtini-ai/ai-detect. Model downloads once (~450 MB),
+  pure-JS tokenizer run it locally; scoring matches houtini-ai/ai-detect. Model downloads once (~1.7 GB),
   checksum-verified. Required, not optional: log_post needs ai_score, and the batch guide won't deliver
   unscored captions. Intel Macs (no onnxruntime-node build) run it on onnxruntime-web's WebAssembly build,
   same scores (tested). Locally verified with a stand-in
@@ -107,6 +107,11 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   fixtures' bytes (sizes and checksums), fixed with .gitattributes; and the keeper's leftover-browser check
   (a WMI query, slow on GitHub's Windows runners) ran on every launch, now only after an unclean exit or a
   failed launch
-- [ ] Detector model release (detector-model-v1) built on GitHub; real scores compared with Jade's ai-detect
+- [x] Detector model release (detector-model-v1) built on GitHub: tokenizer exact on all 29 samples, fp32 ONNX
+  identical to PyTorch (max difference 0.0000, no verdict changes, ~1 s per sentence on a CI runner). Dynamic
+  int8 failed the check (max difference 0.76, 9 of 29 verdicts flipped), so fp32 shipped: a 1.7 GB download
+- [ ] A smaller model that still passes the parity check (int8 on MatMuls only, per channel; or fp16), swapped
+  into the same release with no extension update
+- [ ] Real scores compared with Jade's ai-detect on her captions
 - [ ] A new user runs setup end to end
 

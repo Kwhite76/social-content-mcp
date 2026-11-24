@@ -302,7 +302,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
 
   server.registerTool("detect_ai_text", {
     title: "Score text for AI writing",
-    description: "Scores text with the built-in AI-writing detector (desklib DeBERTa-v3 model, run on this computer): splits it into sentences, skips sentences under 5 words, and gives each an AI probability. The score is the mean over scored sentences, as a percentage; under the brand's ai_score_target is the goal. Score captions without their hashtags. The first use downloads the model once (about 450 MB).",
+    description: "Scores text with the built-in AI-writing detector (desklib DeBERTa-v3 model, run on this computer): splits it into sentences, skips sentences under 5 words, and gives each an AI probability. The score is the mean over scored sentences, as a percentage; under the brand's ai_score_target is the goal. Score captions without their hashtags. The first use downloads the model once (about 1.7 GB).",
     inputSchema: { text: z.string().min(1) },
     annotations: { readOnlyHint: true },
   }, async ({ text }) => {
@@ -325,7 +325,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
 
   server.registerTool("ai_detector_status", {
     title: "Check the AI-writing detector",
-    description: "Shows whether the built-in AI detector's model is downloaded. With download: true, starts the one-time download (about 450 MB) in the background.",
+    description: "Shows whether the built-in AI detector's model is downloaded. With download: true, starts the one-time download (about 1.7 GB) in the background.",
     inputSchema: { download: z.boolean().default(false) },
   }, async ({ download }) => {
     if (download) detector.startDownload();
