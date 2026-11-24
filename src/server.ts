@@ -168,8 +168,8 @@ export function createServer(cfg: Config): McpServer {
 
   const Beat = z.object({
     text: z.string().min(1).max(120).describe("The on-screen line, 14 words or fewer"),
-    focus: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]).optional()
-      .describe("Point to zoom on, as x,y fractions of the image (default center)"),
+    focus: z.array(z.number().min(0).max(1)).length(2).optional()
+      .describe("Point to zoom on: [x, y] as fractions of the image (default center)"),
     zoom: z.number().min(0.8).max(2.5).optional().describe("1.0 = whole image; 1.3-1.9 for a close-up (default 1.6)"),
     image: z.string().optional().describe("Extra photo to show instead of the post image (path)"),
   });
@@ -180,8 +180,8 @@ export function createServer(cfg: Config): McpServer {
     inputSchema: {
       post_file: z.string().min(1).describe("Post image: a path, or a file name in the output folder"),
       style: z.enum(REEL_STYLES),
-      focus: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]).optional()
-        .describe("Where the card sits in the post (pan style)"),
+      focus: z.array(z.number().min(0).max(1)).length(2).optional()
+        .describe("Where the card sits in the post (pan style): [x, y] as fractions"),
       beats: z.array(Beat).max(7).default([]),
       file_name: z.string().regex(/^[\w.-]+\.mp4$/).describe("e.g. 01_2026-11-23_pokemon_this-or-that_reel.mp4"),
       check_frames: z.boolean().default(true),
@@ -192,7 +192,10 @@ export function createServer(cfg: Config): McpServer {
     const post = path.isAbsolute(post_file) ? post_file : path.join(cfg.outputDir, post_file);
     if (!fs.existsSync(post)) return fail(`post image not found: ${post}`);
     for (const b of beats) if (b.image && !fs.existsSync(b.image)) return fail(`beat image not found: ${b.image}`);
-    const opts = { post, logo: k.kit.logo, style, focus, beats };
+    const opts = {
+      post, logo: k.kit.logo, style, focus: focus as [number, number] | undefined,
+      beats: beats.map((b) => ({ ...b, focus: b.focus as [number, number] | undefined })),
+    };
     try {
       const out = path.join(cfg.outputDir, file_name);
       const r = await renderReel(opts, out);

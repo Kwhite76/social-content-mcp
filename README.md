@@ -40,7 +40,10 @@ MCP whenever it drops:
 npx social-content-mcp keeper
 ```
 
-First run: sign in to Penpot in the window and open your design file; it's remembered.
+First run: sign in to Penpot in the window and open your design file; it's remembered. From
+then on the keeper runs headless (no window), so Windows never treats Penpot as a background
+tab to freeze; if Penpot ever asks you to sign in again, a window opens for that. A watchdog
+restarts the browser if the page stops responding. `KEEPER_HEADED=1` keeps the window.
 Files live in `~/.social-content-mcp/keeper` (log, settings, `PAUSE` file to pause it).
 
 ## Reels

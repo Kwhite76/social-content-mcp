@@ -56,7 +56,8 @@ export class PenpotBridge {
   async execute(code: string): Promise<string> {
     const res = await this.call("execute_code", { code });
     const text = textOf(res);
-    if (res.isError) throw new Error(text || "Penpot execute_code failed");
+    // Penpot reports some failures (e.g. a suspended plugin tab) as plain text, not isError
+    if (res.isError || /^Tool execution failed/i.test(text)) throw new Error(text || "Penpot execute_code failed");
     return text;
   }
 

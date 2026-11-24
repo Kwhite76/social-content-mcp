@@ -48,9 +48,9 @@ const saveConfig = (c: KeeperConfig) => {
 const isLogin = (url: string) => /auth-login|auth\/login|screen=auth/.test(url);
 const isWorkspace = (url: string) => url.includes("workspace") && url.includes("file-id=");
 
-async function launch(): Promise<BrowserContext> {
+async function launch(headless: boolean): Promise<BrowserContext> {
   const opts = {
-    headless: process.env.KEEPER_HEADLESS === "1",
+    headless,
     viewport: null,
     ignoreDefaultArgs: ["--enable-automation"],
     args: [
@@ -137,6 +137,7 @@ async function clickConnect(page: Page): Promise<boolean> {
     log("Connection already requested; waiting for Penpot to reconnect.");
     await page.keyboard.press("Escape").catch(() => {});
   } else {
+    log("The MCP menu didn't show Connect or Disconnect.");
     await page.keyboard.press("Escape").catch(() => {});
     return false;
   }
@@ -156,19 +157,56 @@ async function alive(page: Page): Promise<boolean> {
   }
 }
 
+const withTimeout = <T>(p: Promise<T>, ms: number, what: string) =>
+  Promise.race([p, sleep(ms).then(() => { throw new Error(`${what} timed out`); })]) as Promise<T>;
+
+/**
+ * Runs headless once you've signed in and opened your file: a headless browser has no window
+ * to minimize or cover, so Chrome never treats the page as a background tab to freeze.
+ * The first run (and any time Penpot asks you to sign in again) opens a window instead.
+ * KEEPER_HEADED=1 keeps the window; KEEPER_HEADLESS=1 forces headless (tests).
+ */
 export async function runKeeper(penpotUrl = "https://design.penpot.app/") {
   log("Penpot keeper starting.");
   const cfg = loadConfig();
   if (process.env.KEEPER_FILE_URL) cfg.fileUrl = process.env.KEEPER_FILE_URL; // tests
   let ctx: BrowserContext | null = null;
   let page!: Page;
+  let headless = false;
 
-  const start = async () => {
-    if (ctx) await ctx.close().catch(() => {});
-    ctx = await launch();
-    ctx.on("close", () => { ctx = null; });
-    page = ctx.pages()[0] ?? (await ctx.newPage());
-    await openFile(page, cfg, penpotUrl);
+  const wantHeadless = () =>
+    process.env.KEEPER_HEADLESS === "1" || (!!cfg.fileUrl && process.env.KEEPER_HEADED !== "1");
+
+  const closeBrowser = async () => {
+    const c = ctx;
+    ctx = null;
+    if (c) await withTimeout(c.close(), 15_000, "closing the browser").catch(() => {});
+  };
+
+  const start = async (forceWindow = false) => {
+    await closeBrowser();
+    headless = !forceWindow && wantHeadless();
+    const c = await launch(headless);
+    ctx = c;
+    c.on("close", () => { if (ctx === c) ctx = null; });
+    page = c.pages()[0] ?? (await c.newPage());
+    if (headless) {
+      await page.goto(cfg.fileUrl!, { waitUntil: "domcontentloaded" }).catch(() => {});
+      await sleep(3000);
+      if (isLogin(page.url())) {
+        log("Penpot wants you to sign in again. Opening a window for that.");
+        return start(true);
+      }
+      await page.locator('[data-testid="mcp-btn"], button[aria-label="Toggle toolbar"]').first()
+        .waitFor({ timeout: 90_000 }).catch(() => {});
+      log("Running headless (no window), so the browser never puts Penpot to sleep.");
+    } else {
+      await openFile(page, cfg, penpotUrl);
+      if (wantHeadless() && !process.env.KEEPER_FILE_URL) {
+        log("All set. Switching to headless; you can ignore the window closing.");
+        return start();
+      }
+    }
   };
 
   for (const sig of ["SIGINT", "SIGTERM", "SIGBREAK"] as const)
@@ -178,44 +216,48 @@ export async function runKeeper(penpotUrl = "https://design.penpot.app/") {
   let tries = 0;
   let state: "connected" | "down" | "paused" | null = null;
 
+  const tick = async () => {
+    if (!ctx || page.isClosed()) {
+      log("The keeper's browser closed. Reopening it.");
+      await start(); tries = 0;
+    } else if (!(await alive(page))) {
+      log("Page stopped responding. Restarting the browser.");
+      await start(); tries = 0;
+    } else if (isLogin(page.url())) {
+      if (headless) { log("Penpot signed out. Opening a window to sign in."); await start(true); }
+      else { await waitForLogin(page); await start(); }
+    } else if (!isWorkspace(page.url())) {
+      log("The file isn't open. Going back to it.");
+      await openFile(page, cfg, penpotUrl);
+    } else if (fs.existsSync(PAUSE)) {
+      if (state !== "paused") log("Paused (PAUSE file present). Not reconnecting.");
+      state = "paused";
+    } else if (await isConnected(page)) {
+      if (state !== "connected") log("MCP connected.");
+      state = "connected"; tries = 0;
+    } else {
+      if (state === "connected") log("MCP connection dropped.");
+      state = "down";
+      tries++;
+      if (await clickConnect(page)) {
+        log("MCP connected."); state = "connected"; tries = 0;
+      } else if (tries >= MAX_CLICK_TRIES) {
+        log("Couldn't reconnect. Restarting the browser.");
+        await start(); tries = 0;
+      }
+    }
+  };
+
   for (;;) {
     try {
-      if (!ctx || page.isClosed()) {
-        log("Keeper window was closed. Reopening it.");
-        await start(); tries = 0;
-      } else if (!(await alive(page))) {
-        log("Page stopped responding. Reloading.");
-        await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
-        await sleep(5000);
-      } else if (isLogin(page.url())) {
-        await waitForLogin(page);
-        await openFile(page, cfg, penpotUrl);
-      } else if (!isWorkspace(page.url())) {
-        log("The file isn't open. Going back to it.");
-        await openFile(page, cfg, penpotUrl);
-      } else if (fs.existsSync(PAUSE)) {
-        if (state !== "paused") log("Paused (PAUSE file present). Not reconnecting.");
-        state = "paused";
-      } else if (await isConnected(page)) {
-        if (state !== "connected") log("MCP connected.");
-        state = "connected"; tries = 0;
-      } else {
-        if (state === "connected") log("MCP connection dropped.");
-        state = "down";
-        tries++;
-        if (await clickConnect(page)) {
-          log("MCP connected."); state = "connected"; tries = 0;
-        } else if (tries >= MAX_CLICK_TRIES) {
-          log("Couldn't reconnect. Reloading the file.");
-          await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
-          await sleep(8000); tries = 0;
-        }
-      }
+      // a frozen page can make browser calls hang forever, so every check has a deadline
+      await withTimeout(tick(), 60_000, "keeper check");
     } catch (e) {
-      log(`Error: ${(e as Error).message.split("\n")[0]}`);
-      if (!ctx) { await sleep(5000); continue; }
+      log(`Problem: ${(e as Error).message.split("\n")[0]}. Restarting the browser.`);
+      await start().catch((err) => log(`Couldn't restart the browser: ${(err as Error).message.split("\n")[0]}`));
+      tries = 0;
     }
-    try { fs.writeFileSync(STATUS, JSON.stringify({ state, at: new Date().toISOString(), pid: process.pid })); } catch {}
+    try { fs.writeFileSync(STATUS, JSON.stringify({ state, headless, at: new Date().toISOString(), pid: process.pid })); } catch {}
     await sleep(CHECK_EVERY_MS);
   }
 }

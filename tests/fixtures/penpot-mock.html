@@ -20,5 +20,6 @@ document.querySelector('[data-testid=mcp-btn]').onclick = () => { menu.style.dis
 document.addEventListener('keydown', e => { if (e.key == 'Escape') menu.style.display = 'none'; });
 // the connection drops and Penpot gives up after 8 s, like a discarded tab
 setTimeout(() => { connected = false; requested = false; render(); }, 8000);
+/*FREEZE*/
 render();
 </script></body></html>
