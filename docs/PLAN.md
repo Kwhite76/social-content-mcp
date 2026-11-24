@@ -91,5 +91,9 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   setting left empty pulled 25 posts with all metrics and follower vs non-follower reach; the keeper's
   test call logged as working; a stalled plugin right after startup was caught by penpot_status, which
   asked the keeper to reconnect and retried successfully
+- [x] One user guide (guides/getting-started.md): install, each piece and what it does, Penpot, the keeper,
+  the brand kit interview, Instagram (Unified login, from the real screens), first post, day to day,
+  reference for every setting and reel style, troubleshooting, updating and privacy. The setup and
+  connect_instagram prompts serve it with a short note for Claude; create_posts stays Claude's batch procedure
 - [ ] A new user runs setup end to end
 

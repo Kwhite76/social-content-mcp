@@ -6,28 +6,20 @@ Penpot, renders 20-30 s reels, reads your Instagram Insights and keeps a local l
 repeats. It has no brand of its own: everything brand-specific lives in your brand kit.
 See [docs/PLAN.md](docs/PLAN.md) for the design and status.
 
-## Install
+## Get started
 
-1. Download the `.mcpb` for your computer from the latest
-   [release](https://github.com/Kwhite76/social-content-mcp/releases): `win32-x64` (Windows),
-   `darwin-arm64` (Apple Silicon Mac), `darwin-x64` (Intel Mac) or `linux-x64`.
-2. Double-click it to install in Claude Desktop, and fill in the settings: a folder for your
-   brand kit (an empty one is fine) and your Penpot MCP key (Penpot: Your account >
-   Integrations > MCP Server). The Instagram token is optional: see
-   [Connect Instagram Insights](guides/connect-instagram.md).
-3. In Claude, use the **setup** prompt or ask "set up Social Content". Claude interviews you
-   about your brand, writes the brand kit, connects Penpot (a Penpot window opens once for you
-   to sign in), helps you get an Instagram token, and makes a test post.
+**[First-time setup guide](guides/getting-started.md)**: installing, Penpot, the brand kit
+interview, connecting Instagram and your first post, with what each piece does.
 
-Then ask for a batch of posts, or use the **create_posts** prompt.
-
-You need a free Penpot account and Chrome or Edge (Windows already has Edge).
+In short: download the `.mcpb` for your computer from the latest
+[release](https://github.com/Kwhite76/social-content-mcp/releases), double-click it, add your
+Penpot MCP key, and use the **setup** prompt in Claude.
 
 ## What's in it
 
 | | |
 |---|---|
-| Guides | `setup` (the interview), `create_posts` (the whole batch workflow) and `connect_instagram` (getting an Instagram token), as prompts and through `get_guide` |
+| Guides | `setup` (the first-time setup guide, as an interview), `create_posts` (the batch workflow) and `connect_instagram` (the guide's Instagram section on its own), as prompts and through `get_guide` |
 | Brand kit | `init_brand_kit`, `analyze_brand_kit`, `save_brand_kit`, `add_brand_file` |
 | Planning and writing | `plan_batch`, `check_batch_plan` (repeat rules), `check_caption` (the brand's writing rules) |
 | History | `log_post`, `query_history` (`history.jsonl` in the kit) |
@@ -38,19 +30,9 @@ You need a free Penpot account and Chrome or Edge (Windows already has Edge).
 
 ## The brand kit
 
-```
-logo/        your logo, a transparent PNG (shown at the end of every reel)
-style/       posts you love (the look to follow)
-assets/      your own photos and backgrounds
-voice/       past captions and writing notes
-fonts/       optional font files for reel notes
-brand.yaml   name, voice, writing rules, design (look, colors, fonts, what to avoid), reel note style
-pillars.yaml topics, formats and angles, backgrounds, layouts, reel styles, repeat rules
-history.jsonl, insights/, output/   written by the extension
-```
-
-The setup interview writes all of it; you can also edit the YAML by hand (`init_brand_kit`
-creates a commented example).
+A folder of yours: `brand.yaml`, `pillars.yaml`, `logo/`, `style/`, `assets/`, `voice/`,
+`fonts/`, plus `history.jsonl`, `insights/` and `output/` written by the extension. The setup
+interview writes it; the [guide](guides/getting-started.md#10-reference) explains every setting.
 
 ## Build it yourself
 
