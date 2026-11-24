@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "social-content-mcp",
   "display_name": "Social Content",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Brand kit in, on-brand posts and reels out.",
   "long_description": "Plans engagement posts from your brand kit and post history, builds the images in Penpot, renders 20-30 s reels and keeps a local log so nothing repeats. Bring your own Penpot MCP key, AI detector and (optionally) an Instagram token.",
   "author": {

@@ -10,13 +10,16 @@ import { REEL_STYLES } from "./reel/styles.js";
 import { keeperStatus } from "./keeper/keeper.js";
 import { renderReel, renderStills, DURATION } from "./reel/render.js";
 import fs from "node:fs";
+import { createRequire } from "node:module";
+
+const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 const fail = (message: string) => ({ isError: true, content: [{ type: "text" as const, text: message }] });
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function createServer(cfg: Config): McpServer {
-  const server = new McpServer({ name: "social-content-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: "social-content-mcp", version: VERSION });
   const penpot = new PenpotBridge(cfg.penpotUrl, cfg.penpotKey);
 
   const kitProblems = (problems: string[]) => fail(`Brand kit has problems:\n- ${problems.join("\n- ")}`);
@@ -127,12 +130,12 @@ export function createServer(cfg: Config): McpServer {
     annotations: { readOnlyHint: true },
   }, async () => {
     const keeper = keeperStatus(5);
-    if (!penpot.configured) return json({ key: "missing", keeper });
+    if (!penpot.configured) return json({ version: VERSION, key: "missing", keeper });
     try {
       const file = await penpot.execute("return penpot.currentFile ? penpot.currentFile.name : null;");
-      return json({ key: "set", reachable: true, open_file: file, keeper });
+      return json({ version: VERSION, key: "set", reachable: true, open_file: file, keeper });
     } catch (e) {
-      return json({ key: "set", reachable: false, error: (e as Error).message, keeper });
+      return json({ version: VERSION, key: "set", reachable: false, error: (e as Error).message, keeper });
     }
   });
 
