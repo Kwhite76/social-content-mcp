@@ -631,8 +631,8 @@ export async function renderReel(o: ReelOptions, out: string, opts: { workers?: 
   const t0 = Date.now();
   const s = await build({ ...o });
   const total = DURATION + s.B, n = Math.round(total * FPS);
-  // one worker per spare core, up to 8, and only as many as free memory allows (~800 MB each)
-  const workers = opts.workers ?? Math.max(1, Math.min(8, os.availableParallelism() - 1, Math.floor(os.freemem() / 800e6)));
+  // one worker per spare core, up to 6, and only as many as free memory allows (budget 1.2 GB each)
+  const workers = opts.workers ?? Math.max(1, Math.min(6, os.availableParallelism() - 1, Math.floor(os.freemem() / 1.2e9)));
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "reel-"));
   // built: dist/reel/worker.js; in development (tsx): src/reel/worker.ts
@@ -643,21 +643,36 @@ export async function renderReel(o: ReelOptions, out: string, opts: { workers?: 
   const segs: Array<{ start: number; end: number; file: string }> = [];
   for (let a = 0; a < n; a += SEGMENT_FRAMES) segs.push({ start: a, end: Math.min(n, a + SEGMENT_FRAMES), file: path.join(tmpDir, `seg${String(segs.length).padStart(3, "0")}.h264`) });
 
+  const runSegment = (g: (typeof segs)[number]) =>
+    new Promise<void>((ok, bad) => {
+      const p = spawn(process.execPath, workerArgs, { stdio: ["pipe", "ignore", "pipe"] });
+      let err = "";
+      p.stderr!.on("data", (d) => (err = (err + d).slice(-2000)));
+      p.on("error", (e) => bad(e));
+      p.on("close", (code, signal) => code === 0 ? ok() : bad(new Error(
+        `reel segment ${g.start}-${g.end} failed (exit ${code ?? "none"}${signal ? `, signal ${signal}` : ""}${
+          code === 3221225477 ? ", access violation" : code === 3221225725 ? ", stack overflow" : ""}): ${err.trim() || "no output"}`)));
+      p.stdin!.end(JSON.stringify({ options: o, start: g.start, end: g.end, out: g.file }));
+    });
+
   try {
+    // first pass in parallel; anything that fails is retried alone (most often a worker that ran out of memory)
     let next = 0;
+    const failed: Array<{ g: (typeof segs)[number]; e: Error }> = [];
     const runOne = async (): Promise<void> => {
       while (next < segs.length) {
         const g = segs[next++];
-        await new Promise<void>((ok, bad) => {
-          const p = spawn(process.execPath, workerArgs, { stdio: ["pipe", "ignore", "pipe"] });
-          let err = "";
-          p.stderr!.on("data", (d) => (err += d));
-          p.on("close", (code) => (code === 0 ? ok() : bad(new Error(`reel segment ${g.start}-${g.end} failed: ${err.trim()}`))));
-          p.stdin!.end(JSON.stringify({ options: o, start: g.start, end: g.end, out: g.file }));
-        });
+        await runSegment(g).catch((e: Error) => { failed.push({ g, e }); });
       }
     };
     await Promise.all(Array.from({ length: Math.min(workers, segs.length) }, runOne));
+    for (const { g, e } of failed) {
+      let last = e;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try { await runSegment(g); last = undefined as unknown as Error; break; } catch (err) { last = err as Error; }
+      }
+      if (last) throw new Error(`${last.message} (first try: ${e.message})`);
+    }
 
     // raw H.264 segments each start with a keyframe, so they join byte for byte with exact frame counts
     const joined = path.join(tmpDir, "all.h264");
