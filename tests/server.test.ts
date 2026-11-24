@@ -168,5 +168,35 @@ describe("MCP server", () => {
     const c = await connect();
     const r = body(await c.callTool({ name: "penpot_status", arguments: {} }));
     expect(r.key).toBe("missing");
+    expect(r.action_needed).toMatch(/Integrations > MCP Server[\s\S]*Configure/);
+    const k = await c.callTool({ name: "keeper_start", arguments: { wait_seconds: 0 } });
+    expect(k.isError).toBe(true);
+    expect(text(k)).toMatch(/No Penpot MCP key yet/);
+  });
+
+  it("add_brand_file takes a whole folder and pasted paths, and returns image previews", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kit-"));
+    const c = await connect({ SCM_BRAND_KIT_DIR: dir });
+    const { createCanvas } = await import("@napi-rs/canvas");
+    const src = fs.mkdtempSync(path.join(os.tmpdir(), "my posts "));
+    const cv = createCanvas(1600, 2000); cv.getContext("2d").fillRect(0, 0, 50, 50);
+    fs.writeFileSync(path.join(src, "post one.jpg"), await cv.encode("jpeg", 80));
+    fs.writeFileSync(path.join(src, "post two.png"), await cv.encode("png"));
+    fs.writeFileSync(path.join(src, "notes.txt"), "not an image");
+
+    // a folder, pasted with quotes the way Windows "Copy as path" gives it
+    const r = await c.callTool({ name: "add_brand_file", arguments: { kind: "style", source_path: `  "${src}"  ` } });
+    expect(r.isError).toBeFalsy();
+    const res = r as { content: { type: string; mimeType?: string; text?: string }[] };
+    expect(JSON.parse(res.content[0].text!)).toMatchObject({ skipped: ["notes.txt"] });
+    expect(fs.readdirSync(path.join(dir, "style")).sort()).toEqual(["post one.jpg", "post two.png"]);
+    expect(res.content.slice(1).map((x) => [x.type, x.mimeType])).toEqual([["image", "image/jpeg"], ["image", "image/png"]]);
+
+    // the logo must be a file, and a missing path says what it looked for
+    expect((await c.callTool({ name: "add_brand_file", arguments: { kind: "logo", source_path: src } })).isError).toBe(true);
+    expect(text(await c.callTool({ name: "add_brand_file", arguments: { kind: "style", source_path: path.join(src, "nope.png") } }))).toMatch(/Not found on this computer/);
+    // voice notes come back as text only
+    const v = await c.callTool({ name: "add_brand_file", arguments: { kind: "voice", source_path: src } }) as { content: unknown[] };
+    expect(v.content).toHaveLength(1);
   });
 });

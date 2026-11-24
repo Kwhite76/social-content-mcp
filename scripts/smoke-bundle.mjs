@@ -38,6 +38,8 @@ const reel = await c.callTool({ name: "render_reel", arguments: { post_file: "po
 if (reel.isError) throw new Error(`reel: ${reel.content[0].text}`);
 const r = JSON.parse(reel.content[0].text);
 if (!(r.seconds > 7 && fs.statSync(r.path).size > 10_000)) throw new Error(`reel looks wrong: ${JSON.stringify(r)}`);
+const added = await c.callTool({ name: "add_brand_file", arguments: { kind: "style", source_path: path.join(kit, "logo") } });
+if (added.isError || !added.content.some((x) => x.type === "image")) throw new Error(`add_brand_file preview: ${JSON.stringify(added).slice(0, 300)}`);
 const det = await c.callTool({ name: "detect_ai_text", arguments: { text: "We roasted the Guji a little lighter this week and it tastes like peach tea now." } });
 if (det.isError) throw new Error(`detector: ${det.content[0].text}`);
 await c.close();

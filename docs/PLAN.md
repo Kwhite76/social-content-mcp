@@ -112,6 +112,11 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   int8 failed the check (max difference 0.76, 9 of 29 verdicts flipped), so fp32 shipped: a 1.7 GB download
 - [ ] A smaller model that still passes the parity check (int8 on MatMuls only, per channel; or fp16), swapped
   into the same release with no extension update
-- [ ] Real scores compared with Jade's ai-detect on her captions
+- [x] Real scores compared with Jade's ai-detect on her captions (v0.4.1 on her PC): identical, 11.4% and 11.9%;
+  an AI-styled caption scored 87.8%. The model downloaded in about a minute and runs on the native runtime
+- [x] v0.4.2, first-run rough edges: the Penpot MCP key is optional at install (penpot_status and keeper_start
+  say how to get it and where to paste it); add_brand_file takes a whole folder, accepts a pasted Windows path
+  in quotes or ~, and returns small previews of saved images so Claude sees the logo and example posts (images
+  shared in the chat never reach the extension; the guide says to give the file's location)
 - [ ] A new user runs setup end to end
 

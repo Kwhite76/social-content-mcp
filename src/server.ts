@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -16,6 +17,8 @@ import { PenpotBridge } from "./penpot.js";
 import { checkPlan, planBatch } from "./plan.js";
 import { DURATION, renderReel, renderStills, type NoteOptions } from "./reel/render.js";
 import { REEL_STYLES } from "./reel/styles.js";
+
+const NO_PENPOT_KEY = "No Penpot MCP key yet. In Penpot (design.penpot.app): click your avatar > Your account > Integrations > MCP Server, turn it on and copy the key. Then in Claude Desktop: Settings > Extensions > Social Content > Configure, paste it into Penpot MCP key and save. The extension restarts and starts the keeper, which opens a Penpot window the first time so you can sign in.";
 
 const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
@@ -46,12 +49,14 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
 
   /** What the keeper needs from the person, if anything; null when it's fine. */
   const keeperHint = (st: ReturnType<typeof keeperStatus>) =>
-    st.state === "needs_sign_in"
+    !penpot.configured
+      ? NO_PENPOT_KEY
+      : st.state === "needs_sign_in"
       ? "Penpot needs a sign-in: the keeper opened a Penpot window on this computer. Sign in there (and open the design file if asked); it switches back to running hidden on its own."
       : st.state === "paused"
         ? "The keeper is paused (a PAUSE file is in ~/.social-content-mcp/keeper). Delete it to resume."
         : !keeper && !st.running
-          ? "The keeper isn't running and the extension isn't set to start it (Auto-start keeper is off, or no Penpot key). Start it with: node dist/cli.js keeper"
+          ? "The keeper isn't running because Auto-start keeper is off in the extension's settings (Settings > Extensions > Social Content > Configure). Turn it on and save."
           : null;
 
   /**
@@ -161,29 +166,46 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
 
   server.registerTool("add_brand_file", {
     title: "Add a file to the brand kit",
-    description: "Puts a logo, example post, photo or background, voice note or font into the brand kit: copied from a path on this computer, downloaded from a URL, or (voice notes) written from text.",
+    description: "Puts a logo, example post, photo or background, voice note or font into the brand kit: copied from a file or a whole folder on this computer, downloaded from a URL, or (voice notes) written from text. Images shared in the chat don't reach the extension, so ask the user where the files are saved. For images it returns small previews, so you can see the logo and example posts.",
     inputSchema: {
       kind: z.enum(["logo", "style", "assets", "voice", "fonts"]),
-      source_path: z.string().optional().describe("A file on this computer"),
+      source_path: z.string().optional().describe("A file or a folder on this computer (a folder adds every file of this kind in it)"),
       url: z.string().url().optional().describe("Download from this URL (only images the brand may use)"),
       text: z.string().optional().describe("For voice notes: the text to save"),
-      file_name: z.string().regex(/^[\w .()-]+\.\w+$/).optional().describe("Name in the kit (default: the source's name)"),
+      file_name: z.string().regex(/^[\w .()-]+\.\w+$/).optional().describe("Name in the kit (default: the source's name; not used for folders)"),
     },
   }, async ({ kind, source_path, url, text, file_name }) => {
     const rule = KIND_RULES[kind];
     if ([source_path, url, text].filter((x) => x !== undefined).length !== 1) return fail("Give exactly one of source_path, url or text.");
     if (text !== undefined && kind !== "voice") return fail("text is only for voice notes.");
-    let name = file_name ?? (source_path ? path.basename(source_path) : url ? path.basename(new URL(url).pathname) || "download" : "notes.md");
-    if (kind === "logo") name = "logo.png";
-    if (!rule.re.test(name)) return fail(`${kind} needs ${rule.what}; got ${name}`);
     const dir = path.join(cfg.brandKitDir, rule.dir);
-    fs.mkdirSync(dir, { recursive: true });
-    const dest = path.join(dir, name);
+    const save = (name: string, data: Buffer) => {
+      fs.mkdirSync(dir, { recursive: true });
+      const dest = path.join(dir, name);
+      if (kind === "logo") // keep one logo: set any other aside (not deleted)
+        for (const f of fs.readdirSync(dir)) if (/\.png$/i.test(f) && f !== name) fs.renameSync(path.join(dir, f), path.join(dir, f + ".old"));
+      if (fs.existsSync(dest)) fs.copyFileSync(dest, dest + ".bak");
+      fs.writeFileSync(dest, data);
+      return dest;
+    };
+    const isPng = (data: Buffer) => data.length >= 8 && data.readUInt32BE(0) === 0x89504e47;
     try {
+      const src = source_path === undefined ? undefined : cleanPath(source_path);
+      if (src !== undefined && !fs.existsSync(src)) return fail(`Not found on this computer: ${src}`);
+      if (src !== undefined && fs.statSync(src).isDirectory()) {
+        if (kind === "logo") return fail("For the logo, give the PNG file itself, not a folder.");
+        const all = fs.readdirSync(src).filter((f) => fs.statSync(path.join(src, f)).isFile());
+        const files = all.filter((f) => rule.re.test(f));
+        if (files.length === 0) return fail(`No ${kind} files in ${src} (it needs ${rule.what}). Files there: ${all.slice(0, 20).join(", ") || "none"}`);
+        const saved = files.map((f) => save(f, fs.readFileSync(path.join(src, f))));
+        return withPreviews({ saved, skipped: all.filter((f) => !rule.re.test(f)) }, kind, saved);
+      }
+      let name = file_name ?? (src ? path.basename(src) : url ? path.basename(new URL(url).pathname) || "download" : "notes.md");
+      if (kind === "logo") name = "logo.png";
+      if (!rule.re.test(name)) return fail(`${kind} needs ${rule.what}; got ${name}`);
       let data: Buffer;
-      if (source_path) {
-        if (!fs.existsSync(source_path)) return fail(`file not found: ${source_path}`);
-        data = fs.readFileSync(source_path);
+      if (src) {
+        data = fs.readFileSync(src);
       } else if (url) {
         const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
         if (!res.ok) return fail(`download failed: HTTP ${res.status}`);
@@ -191,12 +213,9 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
       } else {
         data = Buffer.from(text! + (text!.endsWith("\n") ? "" : "\n"), "utf8");
       }
-      if (kind === "logo" && (data.length < 8 || data.readUInt32BE(0) !== 0x89504e47)) return fail("The logo must be a PNG file.");
-      if (kind === "logo") // keep one logo: set any other aside (not deleted)
-        for (const f of fs.readdirSync(dir)) if (/\.png$/i.test(f) && f !== name) fs.renameSync(path.join(dir, f), path.join(dir, f + ".old"));
-      if (fs.existsSync(dest)) fs.copyFileSync(dest, dest + ".bak");
-      fs.writeFileSync(dest, data);
-      return json({ saved: dest, bytes: data.length });
+      if (kind === "logo" && !isPng(data)) return fail("The logo must be a PNG file.");
+      const dest = save(name, data);
+      return withPreviews({ saved: dest, bytes: data.length }, kind, [dest]);
     } catch (e) {
       return fail((e as Error).message);
     }
@@ -370,7 +389,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
     inputSchema: {},
     annotations: { readOnlyHint: true },
   }, async () => {
-    if (!penpot.configured) return json({ version: VERSION, key: "missing", keeper: keeperStatus(5) });
+    if (!penpot.configured) return json({ version: VERSION, key: "missing", keeper: keeperStatus(5), action_needed: NO_PENPOT_KEY });
     const started = keeper && !keeperStatus(1).running ? keeper.start() : undefined;
     try {
       const file = await withPenpot(() => penpot.execute("return penpot.currentFile ? penpot.currentFile.name : null;"));
@@ -499,6 +518,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
     description: "Starts the keeper if it isn't running (the extension normally starts it on its own) and waits until Penpot's MCP plugin is connected. If Penpot needs a sign-in, says so instead of waiting.",
     inputSchema: { wait_seconds: z.number().int().min(0).max(300).default(120) },
   }, async ({ wait_seconds }) => {
+    if (!penpot.configured) return fail(NO_PENPOT_KEY);
     if (!keeper) return fail(keeperHint(keeperStatus(1)) ?? "The keeper is running outside the extension.");
     const started = keeper.start();
     const st = wait_seconds ? await keeper.waitReady(wait_seconds * 1000) : keeperStatus(8);
@@ -552,4 +572,35 @@ export async function fitImage(data: Buffer, mime: string, maxSide = 2048): Prom
   return mime === "image/png"
     ? { data: await c.encode("png"), mime, width: w, height: h }
     : { data: await c.encode("jpeg", 90), mime: "image/jpeg", width: w, height: h };
+}
+
+/** A path as people paste it: Windows "Copy as path" adds quotes, and ~ means the home folder. */
+export function cleanPath(p: string): string {
+  let v = p.trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+  if (v === "~" || v.startsWith("~/") || v.startsWith("~\\")) v = path.join(os.homedir(), v.slice(1));
+  return path.normalize(v);
+}
+
+const PREVIEW_MAX = 6;
+
+/** The tool's JSON result, plus small previews of saved images so Claude can look at them. */
+async function withPreviews(result: Record<string, unknown>, kind: string, files: string[]) {
+  const content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[] = [];
+  if (["logo", "style", "assets"].includes(kind)) {
+    for (const f of files.slice(0, PREVIEW_MAX)) {
+      try {
+        const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+        const img = await loadImage(fs.readFileSync(f));
+        const k = Math.min(1, 768 / Math.max(img.width, img.height));
+        const c = createCanvas(Math.round(img.width * k), Math.round(img.height * k));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const png = /\.png$/i.test(f); // PNGs stay PNG so a transparent logo still looks transparent
+        const data = png ? await c.encode("png") : await c.encode("jpeg", 80);
+        content.push({ type: "image", data: data.toString("base64"), mimeType: png ? "image/png" : "image/jpeg" });
+      } catch { /* a preview is a nice-to-have; the file is saved either way */ }
+    }
+    if (files.length > PREVIEW_MAX) result.previews = `first ${PREVIEW_MAX} of ${files.length} shown`;
+  }
+  content.unshift({ type: "text", text: JSON.stringify(result, null, 2) });
+  return { content };
 }

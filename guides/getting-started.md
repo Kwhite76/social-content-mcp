@@ -60,8 +60,14 @@ You need:
 Have these ready for the interview:
 - your **logo** as a PNG with a transparent background
 - 2 to 6 **example posts** you love (yours or others'), as image files
-- 2 to 5 **captions** you've written that sound like you
+- 2 to 5 **captions** you've written that sound like you (you can paste these into the chat)
 - your **brand colors** and **fonts**, if you know them (Claude can suggest them otherwise)
+
+Save the logo and example posts on your computer, ideally together in one folder. In the interview you tell Claude where they are, and it copies them into your brand kit: give it a file, or a whole folder at once. Pictures pasted or dragged into the chat can't be saved into the kit, so give the location instead. To copy a file's or folder's location:
+- **Windows**: hold **Shift**, right-click it, and choose **Copy as path**.
+- **Mac**: right-click it, hold **Option**, and choose **Copy "…" as Pathname**.
+
+Pictures that are online can be given as a link instead.
 
 ---
 
@@ -79,7 +85,7 @@ Have these ready for the interview:
 | Setting | What it's for | What to put |
 |---|---|---|
 | **Brand kit folder** | Where your brand kit, finished posts and reels, post log and Insights are kept | A new, empty folder, for example `Documents/My Brand Kit`. The interview fills it in. |
-| **Penpot MCP key** | Lets the extension work in your Penpot. It only works with your account. | From step 4 below (you can come back and add it) |
+| **Penpot MCP key** | Lets the extension work in your Penpot. It only works with your account. | From step 4 below. If you don't have it yet, leave it empty and add it later |
 | **Penpot address** | Which Penpot to use | Leave as is, unless you run your own Penpot server |
 | **Instagram access token** (optional) | Lets the extension read your Instagram Insights | From step 7, or leave empty |
 | **Instagram account ID** (optional) | Picks the account when a token can see several | Leave empty |
@@ -94,7 +100,7 @@ Secret settings (the keys and tokens) are stored by Claude Desktop in your compu
 1. Sign in at design.penpot.app (create a free account if you don't have one).
 2. Create a **design file** for your posts and give it a name you'll recognize, for example "Brand Posts". Every post image is built here as its own board.
 3. Get your **MCP key**: click your avatar > **Your account** > **Integrations** > **MCP Server**, turn it on, and copy the key.
-4. Paste it into the extension's **Penpot MCP key** setting and save.
+4. Paste it into the extension's **Penpot MCP key** setting (Claude Desktop > **Settings > Extensions > Social Content > Configure**) and save. The extension restarts with it.
 
 The MCP key lets the extension (and only it) send design instructions to Penpot as you. Keep it private, like a password. If it ever leaks, generate a new one in the same place.
 
@@ -122,6 +128,8 @@ Good to know:
 ## 6. Build your brand kit (the setup interview)
 
 In Claude, choose the **setup** prompt (or just say "set up Social Content"). Claude interviews you a few questions at a time and fills in your brand kit for you. You never have to edit settings files, though you can.
+
+When Claude asks for your logo, example posts, photos or fonts, tell it where they're saved (step 2 shows how to copy a location). It shows you small previews of what it saved, so you can check it got the right files, and it looks at your example posts to suggest your look, colors and fonts.
 
 What it asks, and what each answer is used for:
 
@@ -318,6 +326,8 @@ Every reel opens with its style's entrance (about 4 seconds), plays 3 to 7 close
 **Install and settings**
 - *A warning next to your operating system under Requirements*: you downloaded another platform's file. Get the one for your computer (step 3).
 - *Claude says the brand kit has problems*: ask Claude to fix them with the setup interview; it explains each one.
+- *Claude says there's no Penpot MCP key*: get the key (step 4) and paste it into **Settings > Extensions > Social Content > Configure**. The extension restarts and starts the keeper.
+- *Claude can't find your logo or example posts*: give the full location of the file or folder, copied as in step 2, rather than its name. Pictures pasted into the chat can't be saved into the kit.
 
 **Penpot and the keeper**
 - *A Penpot window opened by itself*: Penpot wants you to sign in again. Sign in there; it goes back to running hidden.
