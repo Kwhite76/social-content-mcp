@@ -33,7 +33,7 @@ This guide covers everything from installing to your first post, and explains wh
 | **The reel maker** | Animates each finished post into a 1080x1920 reel in one of 14 motion styles, with short notes over close-ups and your logo at the end. Runs on your computer; nothing is uploaded anywhere. | Reels are saved in your brand kit's `output/` folder |
 | **The post log** | Remembers every post: its topic, format, angle, featured subjects, facts, background, layout and reel style. Each new batch is checked against it, so angles, subjects and facts don't repeat. | `history.jsonl` in your brand kit |
 | **Instagram Insights** (optional) | Reads how your recent posts did (reach, views, likes, comments, saves, shares, reel watch time, follower vs non-follower reach), so Claude can lean toward what works. Read-only. | Each pull is saved in your brand kit's `insights/` folder |
-| **AI-writing check** (optional) | If your Claude has an AI-text detector tool, captions are scored and reworded until they read as human-written. Otherwise this step is skipped. | Your own detector, if you have one |
+| **AI-writing check** | A built-in AI-text detector (the desklib DeBERTa-v3 model) scores every caption sentence by sentence, and Claude rewords the sentences that read as AI-written until the caption is under your target (15% by default). It runs on your computer; the model (about 450 MB) downloads once, the first time it's used. | The model is kept in `.social-content-mcp/models` in your user folder |
 | **Guides** | Step-by-step instructions Claude follows: *setup* (this guide, as an interview), *create_posts* (running a batch) and *connect_instagram* (step 7 on its own). Pick them from the prompts menu in Claude, or just ask. | Built into the extension |
 
 What you get for each post:
@@ -151,6 +151,8 @@ What it asks, and what each answer is used for:
 
 Claude reads back a short summary, saves it when you confirm, and checks the kit. Section 10 explains every setting.
 
+Claude also starts the one-time download of the AI-writing check's model (about 450 MB) in the background, so it's ready for your first post.
+
 ---
 
 ## 7. Connect Instagram Insights (optional)
@@ -217,7 +219,7 @@ In Claude, choose the **create_posts** prompt with **days** set to 1 (or say "ma
 1. **Checks**: the brand kit is valid and Penpot is connected.
 2. **Plan**: the rotation gives the day's topic and format; Claude picks an angle, featured subject, background, layout and reel style, and checks them against the post log and your repeat rules. If Instagram is connected, it reads your Insights first.
 3. **Research**: every fact is checked against reliable sources; news is checked for being current.
-4. **Writing**: the caption, Story, pinned comment, replies and reel lines, in your voice, checked against your writing rules (length, hashtags, questions, emoji, words you never use), then edited to remove AI-sounding patterns, and scored if you have a detector.
+4. **Writing**: the caption, Story, pinned comment, replies and reel lines, in your voice, checked against your writing rules (length, hashtags, questions, emoji, words you never use), then edited to remove AI-sounding patterns. The caption is scored by the AI-writing check, and any sentence that reads as AI-written is reworded (same facts, same voice) until it's under your target.
 5. **Design**: the image is built in your Penpot file in your look, then exported to your brand kit's `output/` folder. Claude looks at it and fixes anything off.
 6. **Reel**: the image is animated in the chosen style; Claude checks frames from it.
 7. **Log**: the post is added to `history.jsonl`.
@@ -265,7 +267,7 @@ Look it over and tell Claude what to change. Changes to your look, voice or rule
 | `never_mention` | Words and subjects no caption may contain |
 | `hashtags` | Fewest and most hashtags per caption |
 | `caption_words` | Shortest and longest caption, in words |
-| `ai_score_target` | The AI-detector score captions must get under (if you have a detector) |
+| `ai_score_target` | The AI-writing check's score captions must get under, as a fraction (0.15 = 15%) |
 | `writing.emoji`, `writing.dashes` | Whether emoji and em or en dashes are allowed |
 | `writing.max_questions` | Most questions in one caption |
 | `writing.rules` | Any other rules, in plain words |
@@ -321,6 +323,11 @@ Every reel opens with its style's entrance (about 4 seconds), plays 3 to 7 close
 - *Claude says Penpot isn't connected*: ask Claude for the keeper's status. It usually reconnects within a minute on its own. If it says the keeper is paused, delete the `PAUSE` file in `.social-content-mcp/keeper`.
 - *Still stuck*: turn Social Content off and on in Settings > Extensions; the keeper starts fresh.
 
+**AI-writing check**
+- *"The AI detector is downloading"*: the model downloads once (about 450 MB); try again in a few minutes.
+- *"The download failed"*: ask Claude to retry the AI detector download. It resumes checking from scratch and verifies the file.
+- *"Isn't available on this computer"*: the detector's engine has no build for Intel Macs. Everything else works; captions just aren't scored.
+
 **Instagram**
 - *"The token isn't allowed to read insights" or "(#10) Application does not have permission"*: the configuration is missing **instagram_manage_insights**. Add it (7.3 and 7.4), generate a new token, paste it in.
 - *instagram_manage_insights isn't in the configuration's list*: add it to the app first (7.3), then edit the configuration again.
@@ -337,7 +344,7 @@ Every reel opens with its style's entrance (about 4 seconds), plays 3 to 7 close
 
 **Updating**: download the newer `.mcpb` from the releases page and double-click it. Claude Desktop updates the extension and keeps your settings; restart Claude Desktop afterwards. Your brand kit, post log and Penpot file aren't touched.
 
-**What it can reach**: your brand kit folder, Penpot (with your key), Instagram Insights (read-only, if you add a token), and the websites Claude uses for research. Images and reels are made on your computer. Nothing is posted anywhere.
+**What it can reach**: your brand kit folder, Penpot (with your key), Instagram Insights (read-only, if you add a token), the extension's GitHub releases (to download the AI-writing check's model once), and the websites Claude uses for research. Images, reels and AI scores are made on your computer; your captions aren't sent anywhere to be scored. Nothing is posted anywhere.
 
 **Turning things off**
 - Instagram: remove the token from the settings. To revoke it entirely, remove the app in Instagram (Settings > Website permissions > Apps and websites) or delete it on developers.facebook.com.

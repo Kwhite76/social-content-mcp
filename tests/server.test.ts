@@ -27,7 +27,7 @@ describe("MCP server", () => {
   it("lists the tools and the two guides as prompts, with instructions", async () => {
     const c = await connect();
     const names = (await c.listTools()).tools.map((t) => t.name).sort();
-    expect(names).toEqual(["add_brand_file", "analyze_brand_kit", "check_batch_plan", "check_caption", "get_guide", "get_insights",
+    expect(names).toEqual(["add_brand_file", "ai_detector_status", "analyze_brand_kit", "check_batch_plan", "check_caption", "detect_ai_text", "get_guide", "get_insights",
       "init_brand_kit", "keeper_start", "keeper_status", "log_post", "penpot_execute", "penpot_status", "penpot_upload_image",
       "plan_batch", "query_history", "render_post", "render_reel", "save_brand_kit"]);
     expect((await c.listPrompts()).prompts.map((p) => p.name).sort()).toEqual(["connect_instagram", "create_posts", "setup"]);

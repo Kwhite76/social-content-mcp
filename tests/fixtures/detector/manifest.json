@@ -1,0 +1,21 @@
+{
+  "model": "desklib-ai-text-detector-v1.01",
+  "variant": "int8",
+  "files": [
+    {
+      "name": "model.onnx",
+      "bytes": 19836,
+      "sha256": "329790c402d834d8337b5f0e0c772810c0fdf5f076843c08f7e993be944f443c"
+    },
+    {
+      "name": "tokenizer.json",
+      "bytes": 340760,
+      "sha256": "7170a5e2729a51868fe3fae80ebcf663a4249412efe96ca7a171916e3c4d9a64"
+    },
+    {
+      "name": "tokenizer_config.json",
+      "bytes": 1288,
+      "sha256": "2efa908b66fb48f5fc865d6f22a07089b82d37545a4468aa249558a6b3da1c72"
+    }
+  ]
+}

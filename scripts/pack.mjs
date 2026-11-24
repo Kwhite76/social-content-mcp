@@ -17,7 +17,7 @@ const run = (cmd, cwd = root, env = {}) => execSync(cmd, { cwd, stdio: "inherit"
 if (!arg("--no-build")) run("npm run build");
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(stage, { recursive: true });
-for (const f of ["package.json", "package-lock.json", "README.md", "LICENSE"])
+for (const f of ["package.json", "package-lock.json", "README.md", "LICENSE", ".npmrc"])
   if (fs.existsSync(path.join(root, f))) fs.copyFileSync(path.join(root, f), path.join(stage, f));
 for (const d of ["dist", "guides"]) fs.cpSync(path.join(root, d), path.join(stage, d), { recursive: true, filter: (p) => !p.endsWith(".map") });
 
@@ -29,6 +29,14 @@ fs.writeFileSync(path.join(stage, "manifest.json"), JSON.stringify(manifest, nul
 // npm picks @napi-rs/canvas's binary from --os/--cpu; ffmpeg-static's installer reads npm_config_platform/arch
 run(`npm ci --omit=dev --no-audit --no-fund --os=${platform} --cpu=${arch}`, stage,
   cross ? { npm_config_platform: platform, npm_config_arch: arch } : {});
+
+// onnxruntime-node ships every platform's binaries (300 MB); keep this one's only. It has no Intel
+// Mac build: there the AI detector reports itself unavailable and everything else works.
+const ortBin = path.join(stage, "node_modules", "onnxruntime-node", "bin", "napi-v6");
+if (fs.existsSync(ortBin))
+  for (const p of fs.readdirSync(ortBin))
+    for (const a of fs.readdirSync(path.join(ortBin, p)))
+      if (p !== platform || a !== arch) fs.rmSync(path.join(ortBin, p, a), { recursive: true, force: true });
 
 const out = path.join(root, `social-content-mcp-${manifest.version}-${platform}-${arch}.mcpb`);
 run(`npx -y @anthropic-ai/mcpb pack "${stage}" "${out}"`);

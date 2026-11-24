@@ -95,5 +95,12 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   the brand kit interview, Instagram (Unified login, from the real screens), first post, day to day,
   reference for every setting and reel style, troubleshooting, updating and privacy. The setup and
   connect_instagram prompts serve it with a short note for Claude; create_posts stays Claude's batch procedure
+- [x] v0.4.0: AI-writing check built in. desklib/ai-text-detector-v1.01 (MIT, DeBERTa-v3-large) converted to
+  ONNX by the Detector model workflow, which checks the Node tokenizer id for id and the scores against
+  PyTorch, and ships int8 if it stays within 0.05 with no label changes (else fp32). onnxruntime-node and a
+  pure-JS tokenizer run it locally; scoring matches houtini-ai/ai-detect. Model downloads once (~450 MB),
+  checksum-verified. Not on Intel Macs (no onnxruntime-node build there). Locally verified with a stand-in
+  DeBERTa-v3-style tokenizer and model (exact match, incl. truncation at 512 tokens)
+- [ ] Detector model release (detector-model-v1) built on GitHub; real scores compared with Jade's ai-detect
 - [ ] A new user runs setup end to end
 

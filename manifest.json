@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "social-content-mcp",
   "display_name": "Social Content",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Brand kit in, on-brand posts and reels out.",
-  "long_description": "Interviews you about your brand, then plans posts from your brand kit and post history, builds the images in your Penpot, renders 20-30 s reels in 14 motion styles, reads your Instagram Insights and keeps a local log so nothing repeats. Ask Claude to set it up, or use the setup prompt.",
+  "long_description": "Interviews you about your brand, then plans posts from your brand kit and post history, builds the images in your Penpot, renders 20-30 s reels in 14 motion styles, scores captions with a built-in AI-writing detector, reads your Instagram Insights and keeps a local log so nothing repeats. Ask Claude to set it up, or use the setup prompt.",
   "author": {
     "name": "Kwhite76"
   },
@@ -67,6 +67,14 @@
     {
       "name": "query_history",
       "description": "Read the post history"
+    },
+    {
+      "name": "detect_ai_text",
+      "description": "Score text with the built-in AI-writing detector"
+    },
+    {
+      "name": "ai_detector_status",
+      "description": "Check or download the AI detector's model"
     },
     {
       "name": "get_insights",

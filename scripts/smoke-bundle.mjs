@@ -2,6 +2,7 @@
 // lists tools, loads a brand kit, and renders a short reel with the bundled ffmpeg and canvas.
 //   node scripts/smoke-bundle.mjs build/mcpb-<platform>-<arch>
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -14,10 +15,16 @@ fs.cpSync(path.join(import.meta.dirname, "..", "tests", "fixtures", "kit"), kit,
 fs.mkdirSync(path.join(kit, "output"), { recursive: true });
 fs.copyFileSync(path.join(kit, "logo", "logo.png"), path.join(kit, "output", "post.png"));
 
+// a stand-in AI detector model, served like the GitHub release (checks the ONNX runtime loads)
+const detFix = path.join(import.meta.dirname, "..", "tests", "fixtures", "detector");
+const srv = http.createServer((req, res) => res.end(fs.readFileSync(path.join(detFix, path.basename(req.url))))).listen(0);
+const detUrl = `http://localhost:${srv.address().port}`;
+
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [path.join(bundle, "dist", "cli.js"), "serve"],
-  env: { ...process.env, SCM_BRAND_KIT_DIR: kit, SCM_AUTO_KEEPER: "false" },
+  env: { ...process.env, SCM_BRAND_KIT_DIR: kit, SCM_AUTO_KEEPER: "false", SCM_DETECTOR_URL: detUrl,
+    SCM_STATE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), "smoke-state-")) },
 });
 const c = new Client({ name: "smoke", version: "0" });
 await c.connect(transport);
@@ -31,5 +38,9 @@ const reel = await c.callTool({ name: "render_reel", arguments: { post_file: "po
 if (reel.isError) throw new Error(`reel: ${reel.content[0].text}`);
 const r = JSON.parse(reel.content[0].text);
 if (!(r.seconds > 7 && fs.statSync(r.path).size > 10_000)) throw new Error(`reel looks wrong: ${JSON.stringify(r)}`);
+const det = await c.callTool({ name: "detect_ai_text", arguments: { text: "We roasted the Guji a little lighter this week and it tastes like peach tea now." } });
+const darwinX64 = process.platform === "darwin" && process.arch === "x64";
+if (det.isError && !(darwinX64 && /isn't available/.test(det.content[0].text))) throw new Error(`detector: ${det.content[0].text}`);
 await c.close();
-console.log(`bundle OK: ${tools.length} tools, reel ${r.seconds} s in ${r.renderMs} ms`);
+srv.close();
+console.log(`bundle OK: ${tools.length} tools, reel ${r.seconds} s in ${r.renderMs} ms, detector ${det.isError ? "unavailable here (expected)" : JSON.parse(det.content[0].text).score_pct + "%"}`);

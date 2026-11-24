@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BrandSchema, FONT_FILE, initBrandKit, loadBrandKit, noteFontFile, PillarsObject, saveBrandKit, type BrandKit } from "./brandkit.js";
 import { checkCaption } from "./check.js";
+import { Detector } from "./detect/detector.js";
 import type { Config } from "./config.js";
 import { GUIDES, readGuide, type GuideName } from "./guides.js";
 import { appendHistory, EntryObject, readHistory } from "./history.js";
@@ -35,6 +36,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
   const server = new McpServer({ name: "social-content-mcp", version: VERSION }, { instructions: INSTRUCTIONS });
   const penpot = new PenpotBridge(cfg.penpotUrl, cfg.penpotKey);
   const keeper = deps.keeper;
+  const detector = new Detector(cfg.stateDir, { source: cfg.detectorSource, modelDir: cfg.detectorDir });
 
   const kitProblems = (problems: string[]) => fail(`Brand kit has problems:\n- ${problems.join("\n- ")}\nThe setup guide (get_guide name "setup") walks the user through fixing them.`);
   const withKit = <T>(fn: (kit: BrandKit) => T) => {
@@ -288,6 +290,47 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
       .reverse()
       .map((e) => (include_captions ? e : { ...e, caption: undefined }));
     return json({ count: out.length, entries: out });
+  });
+
+  // ---------- AI-writing check ----------
+
+  const detectorMessage = (st: Awaited<ReturnType<Detector["status"]>>) =>
+    st.state === "downloading" ? `The AI detector is downloading for the first time (${st.percent}%, ${st.done_mb} of ${st.total_mb} MB). It only happens once; try again in a few minutes.`
+      : st.state === "failed" ? `The AI detector's download failed: ${st.error}. Call ai_detector_status with download: true to try again.`
+        : st.state === "unavailable" ? `The AI detector isn't available on this computer (${st.reason}). Skip the AI score and say so in the notes.`
+          : st.state === "not downloaded" ? "The AI detector isn't downloaded yet." : "";
+
+  server.registerTool("detect_ai_text", {
+    title: "Score text for AI writing",
+    description: "Scores text with the built-in AI-writing detector (desklib DeBERTa-v3 model, run on this computer): splits it into sentences, skips sentences under 5 words, and gives each an AI probability. The score is the mean over scored sentences, as a percentage; under the brand's ai_score_target is the goal. Score captions without their hashtags. The first use downloads the model once (about 450 MB).",
+    inputSchema: { text: z.string().min(1) },
+    annotations: { readOnlyHint: true },
+  }, async ({ text }) => {
+    let st = await detector.status();
+    if (st.state !== "ready" && st.state !== "unavailable") {
+      detector.startDownload();
+      await detector.waitForDownload(90_000);
+      st = await detector.status();
+    }
+    if (st.state !== "ready") return fail(detectorMessage(st));
+    try {
+      const r = await detector.detect(text);
+      const k = loadBrandKit(cfg.brandKitDir).kit;
+      const target = k ? Math.round(k.brand.ai_score_target * 1000) / 10 : undefined;
+      return json({ ...r, target_pct: target, meets_target: target === undefined || r.score_pct === null ? undefined : r.score_pct < target });
+    } catch (e) {
+      return fail((e as Error).message);
+    }
+  });
+
+  server.registerTool("ai_detector_status", {
+    title: "Check the AI-writing detector",
+    description: "Shows whether the built-in AI detector's model is downloaded. With download: true, starts the one-time download (about 450 MB) in the background.",
+    inputSchema: { download: z.boolean().default(false) },
+  }, async ({ download }) => {
+    if (download) detector.startDownload();
+    const st = await detector.status();
+    return json({ ...st, message: detectorMessage(st) || undefined });
   });
 
   // ---------- Instagram ----------

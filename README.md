@@ -23,6 +23,7 @@ Penpot MCP key, and use the **setup** prompt in Claude.
 | Brand kit | `init_brand_kit`, `analyze_brand_kit`, `save_brand_kit`, `add_brand_file` |
 | Planning and writing | `plan_batch`, `check_batch_plan` (repeat rules), `check_caption` (the brand's writing rules) |
 | History | `log_post`, `query_history` (`history.jsonl` in the kit) |
+| AI-writing check | `detect_ai_text`, `ai_detector_status`: the desklib DeBERTa-v3 detector (MIT), converted to ONNX and run locally; scores like houtini-ai/ai-detect (sentence split, 5-word minimum, mean). The model downloads once from the `detector-model-v1` release, built by the Detector model workflow |
 | Instagram | `get_insights` (Unified login, Instagram login or Facebook login tokens): recent posts' reach, saves, shares, watch time and follower vs non-follower reach, matched to your logged posts (read-only; saved in the kit's insights/ folder) |
 | Penpot | `penpot_status`, `penpot_execute`, `penpot_upload_image`, `render_post` (board to PNG), through Penpot's hosted MCP with your key |
 | Reels | `render_reel`: 1080x1920, 14 motion styles, 3-7 beats with notes in your note style, ending on your logo |

@@ -12,6 +12,9 @@ export interface Config {
   instagramAccountId?: string;
   /** where the server keeps its own state (refreshed tokens) */
   stateDir: string;
+  /** where the AI detector's model is downloaded from, and kept (tests point these elsewhere) */
+  detectorSource?: string;
+  detectorDir?: string;
   /** tests only: a stand-in for the Instagram API */
   instagramApiBase?: string;
   /** start the Penpot keeper with the server (default on) */
@@ -38,6 +41,8 @@ export function loadConfig(raw: NodeJS.ProcessEnv = process.env): Config {
     instagramAccountId: env.SCM_INSTAGRAM_ACCOUNT_ID || undefined,
     instagramApiBase: env.SCM_INSTAGRAM_API_BASE || undefined,
     stateDir: env.SCM_STATE_DIR || APP_DIR,
+    detectorSource: env.SCM_DETECTOR_URL || undefined,
+    detectorDir: env.SCM_DETECTOR_DIR || undefined,
     autoKeeper: !/^(false|0|no|off)$/i.test(env.SCM_AUTO_KEEPER ?? ""),
   };
 }

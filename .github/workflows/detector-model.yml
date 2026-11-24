@@ -1,0 +1,47 @@
+name: Detector model
+# Push a tag like detector-model-v1 (or run it from the Actions tab): converts
+# desklib/ai-text-detector-v1.01 to ONNX, checks the extension's Node detector against the
+# original PyTorch scores, and attaches the model files to a GitHub release of the same name.
+# The extension downloads them from there on first use.
+on:
+  push:
+    tags: ["detector-model-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (default detector-model-v1)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Python packages
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install "transformers>=4.45,<5" sentencepiece protobuf onnx onnxruntime
+      - name: Convert
+        run: python scripts/detector/export.py build/detector
+      - run: npm ci
+      - name: Check against PyTorch and assemble
+        run: npx tsx scripts/detector/parity.ts build/detector build/detector-release
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'detector-model-v1' }}
+        run: |
+          body=$(printf 'Model files for the extension'"'"'s AI-writing check: desklib/ai-text-detector-v1.01 (MIT), converted to ONNX.\n\nParity with the original PyTorch model:\n\n```json\n%s\n```\n' "$(cat build/detector-release/parity.json)")
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes "$body" --prerelease
+          gh release edit "$TAG" --notes "$body"
+          gh release upload "$TAG" build/detector-release/* --clobber
