@@ -49,28 +49,27 @@ It has no brand of its own: everything that makes posts yours lives in your bran
 ## 🧭 How it works
 
 ```mermaid
-flowchart LR
-    kit["🎨 Your brand kit<br/>voice · look · topics · formats"]
-    ins["📊 Instagram Insights<br/>(optional, read-only)"]
-    log["🗂️ Post log<br/>what you've already posted"]
+flowchart TB
+    kit["🎨 Your brand kit<br/>voice · look · topics"]
+    ins["📊 Instagram Insights<br/>optional, read-only"]
+    log["🗂️ Post log<br/>so nothing repeats"]
 
     subgraph claude ["Claude + the extension"]
-      direction TB
-      plan["Plan the batch<br/>topic · format · angle"] --> write["Research and write<br/>in your voice"]
-      write --> check["Checks<br/>repeat rules · writing rules · AI check"]
-      check --> design["Design in Penpot"]
-      design --> reel["Render the reel"]
+      direction LR
+      plan["Plan"] --> write["Research<br/>and write"] --> check["Check<br/>rules + AI"] --> design["Design<br/>in Penpot"] --> reel["Render<br/>the reel"]
     end
 
-    kit --> plan
-    ins --> plan
-    log --> plan
-    reel --> out["📦 Posts, reels, captions<br/>ready for you to post"]
-    reel --> log
+    kit --> claude
+    ins --> claude
+    log --> claude
+    claude --> out["📦 Image, reel, caption, Story<br/>ready for you to post"]
+    claude -. logged .-> log
 
     classDef src fill:#F4F1EA,stroke:#BDB5A3,color:#1B1A2E
+    classDef step fill:#7C6CF2,stroke:#5B4BD6,color:#ffffff
     classDef res fill:#FF8A5B,stroke:#E0663C,color:#ffffff
     class kit,ins,log src
+    class plan,write,check,design,reel step
     class out res
 ```
 
