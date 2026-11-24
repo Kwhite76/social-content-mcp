@@ -167,6 +167,11 @@
         "days"
       ],
       "text": "Follow the Social Content create_posts guide (get_guide name \"create_posts\") with start=${arguments.start} days=${arguments.days}."
+    },
+    {
+      "name": "connect_instagram",
+      "description": "Connect Instagram Insights, step by step",
+      "text": "Walk me through the Social Content connect_instagram guide (get_guide name \"connect_instagram\") one step at a time."
     }
   ]
 }

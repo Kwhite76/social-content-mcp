@@ -28,6 +28,7 @@ const INSTRUCTIONS = `Social Content plans, designs and renders social media pos
 - Start every session with analyze_brand_kit.
 - New user, or the kit has problems: follow the setup guide (get_guide name "setup", or the "setup" prompt). It interviews the user and fills the kit in for them.
 - To make posts: follow the create_posts guide (get_guide name "create_posts", or the "create_posts" prompt).
+- To connect Instagram Insights: walk the user through the connect_instagram guide one step at a time.
 - Never invent facts about the brand; everything brand-specific comes from the kit.`;
 
 export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = {}): McpServer {
@@ -91,7 +92,7 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
 
   for (const [name, description] of Object.entries(GUIDES) as Array<[GuideName, string]>) {
     server.registerPrompt(name, {
-      title: name === "setup" ? "Set up Social Content" : "Make a batch of posts",
+      title: { setup: "Set up Social Content", create_posts: "Make a batch of posts", connect_instagram: "Connect Instagram Insights" }[name],
       description,
       argsSchema: name === "create_posts"
         ? { start: z.string().optional().describe("First post date, YYYY-MM-DD"), days: z.string().optional().describe("How many days, 1-14") }

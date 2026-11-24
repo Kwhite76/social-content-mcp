@@ -13,7 +13,8 @@ See [docs/PLAN.md](docs/PLAN.md) for the design and status.
    `darwin-arm64` (Apple Silicon Mac), `darwin-x64` (Intel Mac) or `linux-x64`.
 2. Double-click it to install in Claude Desktop, and fill in the settings: a folder for your
    brand kit (an empty one is fine) and your Penpot MCP key (Penpot: Your account >
-   Integrations > MCP Server). The Instagram token is optional.
+   Integrations > MCP Server). The Instagram token is optional: see
+   [Connect Instagram Insights](guides/connect-instagram.md).
 3. In Claude, use the **setup** prompt or ask "set up Social Content". Claude interviews you
    about your brand, writes the brand kit, connects Penpot (a Penpot window opens once for you
    to sign in), helps you get an Instagram token, and makes a test post.
@@ -26,7 +27,7 @@ You need a free Penpot account and Chrome or Edge (Windows already has Edge).
 
 | | |
 |---|---|
-| Guides | `setup` (the interview) and `create_posts` (the whole batch workflow), as prompts and through `get_guide` |
+| Guides | `setup` (the interview), `create_posts` (the whole batch workflow) and `connect_instagram` (getting an Instagram token), as prompts and through `get_guide` |
 | Brand kit | `init_brand_kit`, `analyze_brand_kit`, `save_brand_kit`, `add_brand_file` |
 | Planning and writing | `plan_batch`, `check_batch_plan` (repeat rules), `check_caption` (the brand's writing rules) |
 | History | `log_post`, `query_history` (`history.jsonl` in the kit) |

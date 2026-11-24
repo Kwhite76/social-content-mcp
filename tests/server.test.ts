@@ -30,7 +30,7 @@ describe("MCP server", () => {
     expect(names).toEqual(["add_brand_file", "analyze_brand_kit", "check_batch_plan", "check_caption", "get_guide", "get_insights",
       "init_brand_kit", "keeper_start", "keeper_status", "log_post", "penpot_execute", "penpot_status", "penpot_upload_image",
       "plan_batch", "query_history", "render_post", "render_reel", "save_brand_kit"]);
-    expect((await c.listPrompts()).prompts.map((p) => p.name).sort()).toEqual(["create_posts", "setup"]);
+    expect((await c.listPrompts()).prompts.map((p) => p.name).sort()).toEqual(["connect_instagram", "create_posts", "setup"]);
     expect(c.getInstructions()).toMatch(/setup guide/);
     const p = await c.getPrompt({ name: "create_posts", arguments: { days: "3" } });
     expect((p.messages[0].content as { text: string }).text).toMatch(/make a batch of posts[\s\S]*days=3/i);
@@ -39,7 +39,8 @@ describe("MCP server", () => {
   it("has no brand of its own: nothing from any one brand in tool descriptions or guides", async () => {
     const c = await connect();
     const all = JSON.stringify(await c.listTools()) + text(await c.callTool({ name: "get_guide", arguments: { name: "setup" } }))
-      + text(await c.callTool({ name: "get_guide", arguments: { name: "create_posts" } }));
+      + text(await c.callTool({ name: "get_guide", arguments: { name: "create_posts" } }))
+      + text(await c.callTool({ name: "get_guide", arguments: { name: "connect_instagram" } }));
     expect(all).not.toMatch(/hatchery|pok[eé]mon|one piece|riftbound|tcg|ebay|harbor coffee/i);
   });
 
