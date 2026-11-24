@@ -83,3 +83,16 @@ describe("brand kit", () => {
     expect(saveBrandKit(dir, { brand: { platforms: [] } }).problems.length).toBeGreaterThan(0);
   });
 });
+
+import { loadConfig } from "../src/config.js";
+describe("settings", () => {
+  it("treats an unfilled ${user_config.x} placeholder as blank", () => {
+    const c = loadConfig({ SCM_BRAND_KIT_DIR: "/kit", SCM_INSTAGRAM_ACCOUNT_ID: "${user_config.instagram_account_id}",
+      SCM_INSTAGRAM_TOKEN: " ${user_config.instagram_token} ", SCM_AUTO_KEEPER: "${user_config.auto_keeper}", SCM_PENPOT_URL: "${user_config.penpot_url}" });
+    expect(c.instagramAccountId).toBeUndefined();
+    expect(c.instagramToken).toBeUndefined();
+    expect(c.autoKeeper).toBe(true);
+    expect(c.penpotUrl).toBe("https://design.penpot.app");
+    expect(loadConfig({ SCM_INSTAGRAM_ACCOUNT_ID: "1784" }).instagramAccountId).toBe("1784");
+  });
+});

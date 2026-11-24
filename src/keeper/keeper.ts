@@ -318,7 +318,7 @@ export async function runKeeper(
   let state: KeeperState = "starting";
   let since = Date.now();
   let restartWanted = false;
-  let checks = 0, probeFails = 0;
+  let checks = 0, probeFails = 0, probedOk = false;
 
   const wantHeadless = () =>
     process.env.KEEPER_HEADLESS === "1" || (!!cfg.fileUrl && process.env.KEEPER_HEADED !== "1");
@@ -412,6 +412,8 @@ export async function runKeeper(
       if (opts.probe && PROBE_EVERY > 0 && ++checks % PROBE_EVERY === 0) {
         try {
           await withTimeout(opts.probe(), 25_000, "test call");
+          if (probeFails > 0 || !probedOk) log("Test call through Penpot's MCP worked; checking every minute or so.");
+          probedOk = true;
           probeFails = 0;
         } catch (e) {
           probeFails++;

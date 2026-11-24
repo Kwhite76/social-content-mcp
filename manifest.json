@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "social-content-mcp",
   "display_name": "Social Content",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Brand kit in, on-brand posts and reels out.",
   "long_description": "Interviews you about your brand, then plans posts from your brand kit and post history, builds the images in your Penpot, renders 20-30 s reels in 14 motion styles, reads your Instagram Insights and keeps a local log so nothing repeats. Ask Claude to set it up, or use the setup prompt.",
   "author": {

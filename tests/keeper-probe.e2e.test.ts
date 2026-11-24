@@ -36,7 +36,7 @@ describe.skipIf(!process.env.KEEPER_E2E)("keeper test calls and reconnect reques
       expect(await waitFor(() => /isn't answering\. Restarting the browser/.test(log()), 60_000)).toBe(true);
       const sinceRestart = keeperStatus().since!;
       failing = false;
-      expect(await waitFor(() => /isn't answering[\s\S]*MCP connected\./.test(log()), 60_000)).toBe(true);
+      expect(await waitFor(() => /isn't answering[\s\S]*MCP connected\.[\s\S]*Test call through Penpot's MCP worked/.test(log()), 60_000)).toBe(true);
 
       // a tool call saw the stall first: it asks for a reconnect and waits for a fresh connection
       const asked = requestReconnect();

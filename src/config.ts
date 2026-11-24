@@ -20,7 +20,14 @@ export interface Config {
 
 export const APP_DIR = path.join(os.homedir(), ".social-content-mcp");
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+/**
+ * A setting's value, or undefined when it's blank. Claude Desktop passes an optional setting the
+ * user left empty as its literal placeholder ("${user_config.name}"), so that counts as blank too.
+ */
+const setting = (v: string | undefined) => (!v || /^\$\{[^}]*\}$/.test(v.trim()) ? undefined : v.trim());
+
+export function loadConfig(raw: NodeJS.ProcessEnv = process.env): Config {
+  const env = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, k.startsWith("SCM_") ? setting(v) : v])) as NodeJS.ProcessEnv;
   const brandKitDir = env.SCM_BRAND_KIT_DIR || path.join(APP_DIR, "brand-kit");
   return {
     brandKitDir,

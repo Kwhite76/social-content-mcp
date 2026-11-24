@@ -83,6 +83,10 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] Meta stopped offering Instagram login to new apps (late Oct 2026); new apps get Unified login: a
   never-expiring system-user token on graph.facebook.com, account from /me/assigned_instagram_accounts.
   `get_insights` handles it (v0.3.1), and the setup guide walks through it
+- [x] v0.3.1 live on Jade's PC: `penpot_upload_image` sent the full 3508 px logo (shrunk to 2048, in pieces) and it exported intact
+- [x] v0.3.2: Claude Desktop passes an optional setting left empty as its literal placeholder
+  ("${user_config.instagram_account_id}"); settings like that now count as blank. Keeper logs its first
+  successful test call, so the probe can be seen working
 - [ ] Real Instagram token test (`get_insights` against the live API)
 - [ ] `penpot_upload_image` on real Penpot
 - [ ] A new user runs setup end to end
