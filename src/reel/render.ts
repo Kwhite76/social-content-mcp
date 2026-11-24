@@ -631,7 +631,8 @@ export async function renderReel(o: ReelOptions, out: string, opts: { workers?: 
   const t0 = Date.now();
   const s = await build({ ...o });
   const total = DURATION + s.B, n = Math.round(total * FPS);
-  const workers = opts.workers ?? Math.max(1, Math.min(4, os.availableParallelism() - 1));
+  // one worker per spare core, up to 8, and only as many as free memory allows (~800 MB each)
+  const workers = opts.workers ?? Math.max(1, Math.min(8, os.availableParallelism() - 1, Math.floor(os.freemem() / 800e6)));
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "reel-"));
   // built: dist/reel/worker.js; in development (tsx): src/reel/worker.ts
