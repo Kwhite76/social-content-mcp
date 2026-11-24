@@ -20,7 +20,7 @@ describe("MCP server", () => {
     const c = await connect();
     const names = (await c.listTools()).tools.map((t) => t.name).sort();
     expect(names).toEqual(["analyze_brand_kit", "check_batch_plan", "init_brand_kit", "keeper_status", "log_post",
-      "penpot_execute", "penpot_status", "plan_batch", "query_history", "render_post"]);
+      "penpot_execute", "penpot_status", "plan_batch", "query_history", "render_post", "render_reel"]);
   });
 
   it("plan_batch returns the rotation", async () => {

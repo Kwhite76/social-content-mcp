@@ -5,13 +5,18 @@
   "version": "0.1.0",
   "description": "Brand kit in, on-brand posts and reels out.",
   "long_description": "Plans engagement posts from your brand kit and post history, builds the images in Penpot, renders 20-30 s reels and keeps a local log so nothing repeats. Bring your own Penpot MCP key, AI detector and (optionally) an Instagram token.",
-  "author": { "name": "Kwhite76" },
+  "author": {
+    "name": "Kwhite76"
+  },
   "server": {
     "type": "node",
     "entry_point": "dist/cli.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/cli.js", "serve"],
+      "args": [
+        "${__dirname}/dist/cli.js",
+        "serve"
+      ],
       "env": {
         "SCM_BRAND_KIT_DIR": "${user_config.brand_kit_dir}",
         "SCM_PENPOT_URL": "${user_config.penpot_url}",
@@ -21,16 +26,50 @@
     }
   },
   "tools": [
-    { "name": "init_brand_kit", "description": "Create the brand kit folder layout" },
-    { "name": "analyze_brand_kit", "description": "Check the brand kit" },
-    { "name": "plan_batch", "description": "Plan a batch from the rotation and history" },
-    { "name": "check_batch_plan", "description": "Check a plan for repeats" },
-    { "name": "log_post", "description": "Log a finished post" },
-    { "name": "query_history", "description": "Read the post history" },
-    { "name": "penpot_status", "description": "Check the Penpot connection" },
-    { "name": "penpot_execute", "description": "Run code in Penpot" },
-    { "name": "render_post", "description": "Export a post image" },
-    { "name": "keeper_status", "description": "Check the Penpot keeper" }
+    {
+      "name": "init_brand_kit",
+      "description": "Create the brand kit folder layout"
+    },
+    {
+      "name": "analyze_brand_kit",
+      "description": "Check the brand kit"
+    },
+    {
+      "name": "plan_batch",
+      "description": "Plan a batch from the rotation and history"
+    },
+    {
+      "name": "check_batch_plan",
+      "description": "Check a plan for repeats"
+    },
+    {
+      "name": "log_post",
+      "description": "Log a finished post"
+    },
+    {
+      "name": "query_history",
+      "description": "Read the post history"
+    },
+    {
+      "name": "penpot_status",
+      "description": "Check the Penpot connection"
+    },
+    {
+      "name": "penpot_execute",
+      "description": "Run code in Penpot"
+    },
+    {
+      "name": "render_post",
+      "description": "Export a post image"
+    },
+    {
+      "name": "render_reel",
+      "description": "Render a 20-30 s reel in one of 14 styles"
+    },
+    {
+      "name": "keeper_status",
+      "description": "Check the Penpot keeper"
+    }
   ],
   "user_config": {
     "brand_kit_dir": {
@@ -62,7 +101,13 @@
     }
   },
   "compatibility": {
-    "platforms": ["win32", "darwin", "linux"],
-    "runtimes": { "node": ">=20.0.0" }
+    "platforms": [
+      "win32",
+      "darwin",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
   }
 }

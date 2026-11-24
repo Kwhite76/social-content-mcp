@@ -43,5 +43,7 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] Penpot bridge (`penpot_status`, `penpot_execute`, `render_post`)
 - [x] Keeper (`social-content-mcp keeper`, `keeper_status`), e2e-tested against a mock of Penpot's MCP menu
 - [x] Spike on a real account (2026-11-23): a plain MCP client reaches Penpot's hosted MCP with just the user's MCP key
-- [ ] `render_reel`: port the 14 styles and beats, benchmark against the Python renderer
+- [x] `render_reel`: 14 styles and beats ported to Node; matches the Python renderer (mean pixel
+  difference 1-6 of 255 across all styles); parallel segment workers; check frames
+- [ ] Benchmark on Jade's PC (`npm run bench:reel`); 2-core sandbox: 35 s for a 29 s reel vs 40 s in Python
 - [ ] Run a full Hatchery batch through v0

@@ -22,4 +22,5 @@ jobs:
       - run: npm test
         env:
           KEEPER_E2E: "1"
+          REEL_E2E: "1"
       - run: npx -y @anthropic-ai/mcpb validate manifest.json

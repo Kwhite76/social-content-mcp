@@ -8,6 +8,8 @@ import { PenpotBridge } from "./penpot.js";
 import { checkPlan, planBatch, RULES } from "./plan.js";
 import { REEL_STYLES } from "./reel/styles.js";
 import { keeperStatus } from "./keeper/keeper.js";
+import { renderReel, renderStills, DURATION } from "./reel/render.js";
+import fs from "node:fs";
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 const fail = (message: string) => ({ isError: true, content: [{ type: "text" as const, text: message }] });
@@ -157,6 +159,50 @@ export function createServer(cfg: Config): McpServer {
   }, async ({ shape_id, file_name, mode }) => {
     try {
       return json(await penpot.exportPng(shape_id, path.join(cfg.outputDir, file_name), mode));
+    } catch (e) {
+      return fail((e as Error).message);
+    }
+  });
+
+  // ---------- reels ----------
+
+  const Beat = z.object({
+    text: z.string().min(1).max(120).describe("The on-screen line, 14 words or fewer"),
+    focus: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]).optional()
+      .describe("Point to zoom on, as x,y fractions of the image (default center)"),
+    zoom: z.number().min(0.8).max(2.5).optional().describe("1.0 = whole image; 1.3-1.9 for a close-up (default 1.6)"),
+    image: z.string().optional().describe("Extra photo to show instead of the post image (path)"),
+  });
+
+  server.registerTool("render_reel", {
+    title: "Render a reel",
+    description: "Animates a finished post image into a 1080x1920 reel in one of 14 motion styles, ending on the brand logo. With 3-7 beats it runs 20-30 s (each beat a close-up with a handwritten note); without beats, 7.5 s. Silent audio track; add a sound in the app. Also writes check frames (3.0 s, first and last beat, end) to look at.",
+    inputSchema: {
+      post_file: z.string().min(1).describe("Post image: a path, or a file name in the output folder"),
+      style: z.enum(REEL_STYLES),
+      focus: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]).optional()
+        .describe("Where the card sits in the post (pan style)"),
+      beats: z.array(Beat).max(7).default([]),
+      file_name: z.string().regex(/^[\w.-]+\.mp4$/).describe("e.g. 01_2026-11-23_pokemon_this-or-that_reel.mp4"),
+      check_frames: z.boolean().default(true),
+    },
+  }, async ({ post_file, style, focus, beats, file_name, check_frames }) => {
+    const k = loadBrandKit(cfg.brandKitDir);
+    if (!k.kit?.logo) return kitProblems(k.problems.length ? k.problems : ["no logo in the brand kit"]);
+    const post = path.isAbsolute(post_file) ? post_file : path.join(cfg.outputDir, post_file);
+    if (!fs.existsSync(post)) return fail(`post image not found: ${post}`);
+    for (const b of beats) if (b.image && !fs.existsSync(b.image)) return fail(`beat image not found: ${b.image}`);
+    const opts = { post, logo: k.kit.logo, style, focus, beats };
+    try {
+      const out = path.join(cfg.outputDir, file_name);
+      const r = await renderReel(opts, out);
+      let frames: string[] = [];
+      if (check_frames) {
+        const mids = r.beatMidpoints;
+        const times = [3.0, ...(mids.length ? [mids[0], mids[mids.length - 1]] : [DURATION / 2]), r.seconds - 0.2];
+        frames = (await renderStills(opts, times, path.join(cfg.outputDir, "checks", file_name.replace(/\.mp4$/, "")))).paths;
+      }
+      return json({ ...r, check_frames: frames });
     } catch (e) {
       return fail((e as Error).message);
     }
