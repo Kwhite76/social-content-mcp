@@ -45,6 +45,6 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] Spike on a real account (2026-11-23): a plain MCP client reaches Penpot's hosted MCP with just the user's MCP key
 - [x] `render_reel`: 14 styles and beats ported to Node; matches the Python renderer (mean pixel
   difference 1-6 of 255 across all styles); parallel segment workers; check frames
-- [x] Benchmark (`npm run bench:reel`), 29 s reel: Jade's PC (16 cores, 4 workers) 9.1 s; 2-core sandbox 35 s;
+- [x] Benchmark (`npm run bench:reel`), 29 s reel: Jade's PC (16 cores) 9.1 s with 4 workers, 7.1 s with 8; 2-core sandbox 35 s;
   Python 40 s. Worker cap raised to 8, limited by free memory
 - [ ] Run a full Hatchery batch through v0
