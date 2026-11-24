@@ -1,15 +1,15 @@
 <!doctype html>
-<!-- Mimics Penpot's workspace MCP toolbar menu (frontend/src/app/main/ui/components/mcp_menu.cljs) -->
+<!-- Mimics Penpot's workspace MCP toolbar menu as deployed on design.penpot.app (Nov 2026): items are plain li, label "Connect here" -->
 <html><body>
 <ul><li><button data-testid="mcp-btn" aria-haspopup="true"><div><span id="dot" class="mcp__toolbar-mcp-button-dot"></span><span class="mcp__toolbar-mcp-button-label">MCP</span></div></button>
-<ul id="menu" style="display:none"></ul></li></ul>
+<div class="main_ui_workspace_top_toolbar__toolbar-mcp-menu"><ul id="menu" role="menu" class="main_ui_workspace_top_toolbar__toolbar-mcp-dropdown" style="display:none"></ul></div></li></ul>
 <script>
 let requested = false, connected = false;
 const dot = document.getElementById('dot'), menu = document.getElementById('menu');
 function render() {
   dot.className = 'mcp__toolbar-mcp-button-dot' + (connected ? ' mcp__connected' : '');
   menu.innerHTML = (connected ? '<li role="presentation"><span>MCP connected</span></li>' : '') +
-    '<li role="menuitem" tabindex="0" id="act">' + (requested ? 'Disconnect' : 'Connect') + '</li>';
+    '<li class="main_ui_workspace_top_toolbar__toolbar-mcp-dropdown-item" tabindex="0" id="act">' + (requested ? 'Disconnect' : 'Connect here') + '</li>';
   document.getElementById('act').onclick = () => {
     if (requested) { requested = false; connected = false; }
     else { requested = true; setTimeout(() => { connected = true; render(); }, 1000); }

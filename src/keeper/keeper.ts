@@ -153,11 +153,16 @@ async function clickConnect(page: Page): Promise<boolean> {
     await page.keyboard.press("Escape").catch(() => {});
     return true;
   }
-  const item = page.getByRole("menuitem", { name: "Connect", exact: true });
-  if (await item.count()) {
-    await item.first().click();
-    log("Clicked MCP > Connect.");
-  } else if (await page.getByRole("menuitem", { name: "Disconnect", exact: true }).count()) {
+  // Penpot's labels vary by version and state: "Connect", "Connect here" (another tab holds MCP),
+  // "Disconnect". Match within the MCP menu by text.
+  const items = page.locator('[class*="toolbar-mcp-dropdown"] li, [class*="toolbar-mcp-menu"] [role="menu"] li, [role="menuitem"]');
+  const connect = items.filter({ hasText: /^\s*connect\b/i });
+  const disconnect = items.filter({ hasText: /^\s*disconnect\b/i });
+  if (await connect.count()) {
+    const label = (await connect.first().innerText()).trim();
+    await connect.first().click();
+    log(`Clicked MCP > ${label}.`);
+  } else if (await disconnect.count()) {
     log("Connection already requested; waiting for Penpot to reconnect.");
     await page.keyboard.press("Escape").catch(() => {});
   } else {
