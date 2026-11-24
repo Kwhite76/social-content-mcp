@@ -47,4 +47,6 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   difference 1-6 of 255 across all styles); parallel segment workers; check frames
 - [x] Benchmark (`npm run bench:reel`), 29 s reel: Jade's PC (16 cores) 9.1 s with 4 workers, 7.1 s with 8; 2-core sandbox 35 s;
   Python 40 s. Worker cap raised to 8, limited by free memory
-- [ ] Run a full Hatchery batch through v0
+- [x] Packaging: `npm run pack` builds the .mcpb per OS; packed bundle smoke-tested (tools, kit, plan, 20 s reel)
+- [x] Hatchery brand kit with history migrated from the Drive log (Nov 23 - Dec 6)
+- [ ] Run a full Hatchery batch through v0 (Dec 7 - Dec 20)

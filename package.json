@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "keeper": "node dist/cli.js keeper",
     "spike:penpot": "tsx scripts/penpot-spike.ts",
-    "bench:reel": "tsx scripts/bench-reel.ts"
+    "bench:reel": "tsx scripts/bench-reel.ts",
+    "pack": "node scripts/pack.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

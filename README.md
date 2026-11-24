@@ -17,6 +17,19 @@ a local log so nothing repeats. See [docs/PLAN.md](docs/PLAN.md) for the design 
 | `render_reel` | 1080x1920 reel in one of 14 motion styles; with 3-7 beats it runs 20-30 s; writes check frames |
 | `keeper_status` | Whether the Penpot keeper is running |
 
+## Install (Claude Desktop)
+
+Build the extension on the computer that will run it (the canvas and ffmpeg binaries are per-OS):
+
+```
+npm install
+npm run pack
+```
+
+Double-click `social-content-mcp.mcpb`, then fill in the settings: your brand kit folder and
+your Penpot MCP key (Penpot: Your account > Integrations > MCP Server). Start the keeper so
+Penpot stays connected: `npx social-content-mcp keeper` (or `node dist/cli.js keeper`).
+
 ## Penpot keeper
 
 Penpot's MCP plugin only works while its browser tab is awake. The keeper opens Penpot in
