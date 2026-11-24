@@ -49,10 +49,11 @@ Files live in `~/.social-content-mcp/keeper` (log, settings, `PAUSE` file to pau
 ## Reels
 
 `render_reel` draws with Skia (`@napi-rs/canvas`) and encodes with a bundled ffmpeg, so
-nothing else needs installing. Frames are rendered in 2-second segments by up to 8 worker
-processes in parallel (one per spare core, limited by free memory) and joined byte for byte (raw H.264, no B-frames), which keeps every
+nothing else needs installing. Frames are rendered in 2-second segments by up to 6 worker
+threads in parallel (one per spare core, limited by free memory) and joined byte for byte (raw H.264, no B-frames), which keeps every
 frame and keeps memory flat: the canvas binding never returns the memory of pixel reads, so
-each segment process exits and hands it back.
+each segment's thread exits and the memory is reused. Threads, not subprocesses, because
+Claude Desktop's built-in Node can't start Node subprocesses.
 
 ## Develop
 

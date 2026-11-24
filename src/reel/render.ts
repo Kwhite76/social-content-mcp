@@ -9,6 +9,7 @@
  * With no beats it is the 7.5 s version.
  */
 import { spawn } from "node:child_process";
+import { Worker } from "node:worker_threads";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -626,7 +627,7 @@ export async function renderSegment(o: ReelOptions, start: number, end: number, 
 
 const SEGMENT_FRAMES = 60;
 
-/** Renders the reel to an MP4: segments in parallel worker processes, then joined with a silent audio track. */
+/** Renders the reel to an MP4: segments in parallel worker threads, then joined with a silent audio track. */
 export async function renderReel(o: ReelOptions, out: string, opts: { workers?: number } = {}): Promise<ReelResult> {
   const t0 = Date.now();
   const s = await build({ ...o });
@@ -635,24 +636,29 @@ export async function renderReel(o: ReelOptions, out: string, opts: { workers?: 
   const workers = opts.workers ?? Math.max(1, Math.min(6, os.availableParallelism() - 1, Math.floor(os.freemem() / 1.2e9)));
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "reel-"));
+  // Segments render in worker threads, not child processes: Claude Desktop's built-in Node
+  // can't start Node subprocesses. The canvas binding's leaked pixel memory is released for
+  // reuse when each thread exits, so memory stays flat across segments.
   // built: dist/reel/worker.js; in development (tsx): src/reel/worker.ts
   const here = fileURLToPath(import.meta.url);
-  const workerArgs = here.endsWith(".ts")
-    ? ["--import", "tsx", path.join(path.dirname(here), "worker.ts")]
-    : [path.join(path.dirname(here), "worker.js")];
+  const isTs = here.endsWith(".ts");
+  const workerFile = path.join(path.dirname(here), isTs ? "worker.ts" : "worker.js");
   const segs: Array<{ start: number; end: number; file: string }> = [];
   for (let a = 0; a < n; a += SEGMENT_FRAMES) segs.push({ start: a, end: Math.min(n, a + SEGMENT_FRAMES), file: path.join(tmpDir, `seg${String(segs.length).padStart(3, "0")}.h264`) });
 
   const runSegment = (g: (typeof segs)[number]) =>
     new Promise<void>((ok, bad) => {
-      const p = spawn(process.execPath, workerArgs, { stdio: ["pipe", "ignore", "pipe"] });
+      const w = new Worker(workerFile, {
+        workerData: { options: o, start: g.start, end: g.end, out: g.file },
+        execArgv: isTs ? ["--import", "tsx"] : [],
+        stderr: true,
+      });
       let err = "";
-      p.stderr!.on("data", (d) => (err = (err + d).slice(-2000)));
-      p.on("error", (e) => bad(e));
-      p.on("close", (code, signal) => code === 0 ? ok() : bad(new Error(
-        `reel segment ${g.start}-${g.end} failed (exit ${code ?? "none"}${signal ? `, signal ${signal}` : ""}${
-          code === 3221225477 ? ", access violation" : code === 3221225725 ? ", stack overflow" : ""}): ${err.trim() || "no output"}`)));
-      p.stdin!.end(JSON.stringify({ options: o, start: g.start, end: g.end, out: g.file }));
+      w.stderr.on("data", (d) => (err = (err + d).slice(-2000)));
+      let failure: Error | undefined;
+      w.on("error", (e: unknown) => (failure = e as Error));
+      w.on("exit", (code) => code === 0 && !failure ? ok() : bad(new Error(
+        `reel segment ${g.start}-${g.end} failed (exit ${code}): ${failure?.message ?? (err.trim() || "no output")}`)));
     });
 
   try {

@@ -1,6 +1,6 @@
 {
   "name": "social-content-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Brand kit in, on-brand posts and reels out: an MCP server for engagement posts (Penpot designs, 20-30 s reels, history-aware rotation).",
   "main": "dist/index.js",
   "scripts": {
