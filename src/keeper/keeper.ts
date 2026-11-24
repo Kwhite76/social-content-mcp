@@ -55,6 +55,7 @@ async function launch(headless: boolean): Promise<BrowserContext> {
     ignoreDefaultArgs: ["--enable-automation"],
     args: [
       "--start-maximized",
+      "--window-size=1600,1000",
       // never throttle, freeze or discard this window, even when hidden or minimized
       "--disable-background-timer-throttling",
       "--disable-backgrounding-occluded-windows",
@@ -109,6 +110,29 @@ async function mcpButton(page: Page): Promise<Locator | null> {
   return (await btn.count()) ? btn : null;
 }
 
+/** Logs what the page shows around the MCP button (and saves debug.png), to fix selectors on real Penpot. */
+async function describeMenu(page: Page, btn: Locator) {
+  try {
+    const info = await page.evaluate(() => {
+      const b = document.querySelector('[data-testid="mcp-btn"]') as HTMLElement | null;
+      const items = [...document.querySelectorAll('[role="menuitem"], [role="menu"] li, li[class*="dropdown"]')]
+        .map((e) => (e as HTMLElement).innerText.trim()).filter(Boolean).slice(0, 12);
+      const wrap = b?.closest("li")?.outerHTML ?? b?.parentElement?.outerHTML ?? "";
+      return {
+        viewport: `${innerWidth}x${innerHeight}`,
+        expanded: b?.getAttribute("aria-expanded"),
+        button: b?.innerText.trim(),
+        items,
+        near: wrap.replace(/\s+/g, " ").slice(0, 700),
+      };
+    });
+    log(`Debug: ${JSON.stringify(info)}`);
+    await page.screenshot({ path: path.join(KEEPER_DIR, "debug.png") }).catch(() => {});
+  } catch (e) {
+    log(`Debug failed: ${(e as Error).message.split("\n")[0]}`);
+  }
+}
+
 /** true connected, false not, null can't tell (no MCP button) */
 async function isConnected(page: Page): Promise<boolean | null> {
   const btn = await mcpButton(page);
@@ -138,6 +162,7 @@ async function clickConnect(page: Page): Promise<boolean> {
     await page.keyboard.press("Escape").catch(() => {});
   } else {
     log("The MCP menu didn't show Connect or Disconnect.");
+    await describeMenu(page, btn);
     await page.keyboard.press("Escape").catch(() => {});
     return false;
   }
