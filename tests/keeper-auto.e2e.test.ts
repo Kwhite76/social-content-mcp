@@ -14,8 +14,8 @@ function setup() {
   const srv = http.createServer((_, res) => res.end(html)).listen(0);
   const port = (srv.address() as { port: number }).port;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "keeper-auto-"));
-  const dir = path.join(home, ".social-content-mcp", "keeper");
-  const env = { ...process.env, HOME: home, USERPROFILE: home, KEEPER_HEADLESS: "1", KEEPER_CHECK_MS: "2000",
+  const dir = path.join(home, "keeper");
+  const env = { ...process.env, SCM_STATE_DIR: home, KEEPER_HEADLESS: "1", KEEPER_CHECK_MS: "2000",
     KEEPER_FILE_URL: `http://localhost:${port}/workspace?file-id=test`, SCM_PENPOT_MCP_KEY: "test-key", KEEPER_PROBE_TICKS: "0",
     SCM_BRAND_KIT_DIR: path.join(home, "kit") };
   const procs: ChildProcess[] = [];

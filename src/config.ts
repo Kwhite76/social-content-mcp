@@ -21,7 +21,14 @@ export interface Config {
   autoKeeper: boolean;
 }
 
-export const APP_DIR = path.join(os.homedir(), ".social-content-mcp");
+/**
+ * The extension's own folder (keeper, refreshed tokens, the detector's model). SCM_STATE_DIR moves
+ * it; tests use that rather than changing HOME/USERPROFILE, which Chrome on Windows depends on.
+ */
+export const APP_DIR = (() => {
+  const v = process.env.SCM_STATE_DIR?.trim();
+  return v && !/^\$\{[^}]*\}$/.test(v) ? v : path.join(os.homedir(), ".social-content-mcp");
+})();
 
 /**
  * A setting's value, or undefined when it's blank. Claude Desktop passes an optional setting the

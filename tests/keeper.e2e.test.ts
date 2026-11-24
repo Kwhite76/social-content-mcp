@@ -17,13 +17,13 @@ function runKeeper(query: string) {
     res.end(html.toString().replace("/*FREEZE*/", freeze ? "setTimeout(() => { for (;;) {} }, 6000);" : ""));
   }).listen(0);
   const port = (srv.address() as { port: number }).port;
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "keeper-home-"));
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), "keeper-state-"));
   const child = spawn(process.execPath, [path.join(import.meta.dirname, "..", "dist", "cli.js"), "keeper"], {
-    env: { ...process.env, HOME: home, USERPROFILE: home, KEEPER_HEADLESS: "1", KEEPER_CHECK_MS: "2000",
+    env: { ...process.env, SCM_STATE_DIR: state, KEEPER_HEADLESS: "1", KEEPER_CHECK_MS: "2000",
       KEEPER_FILE_URL: `http://localhost:${port}/workspace?file-id=test${query}` },
     stdio: "ignore",
   });
-  const logFile = path.join(home, ".social-content-mcp", "keeper", "keeper.log");
+  const logFile = path.join(state, "keeper", "keeper.log");
   const waitFor = async (re: RegExp, ms: number) => {
     const deadline = Date.now() + ms;
     let log = "";

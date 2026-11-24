@@ -182,7 +182,13 @@ async function launchBrowser(headless: boolean): Promise<BrowserContext> {
   };
   let last: unknown;
   for (const channel of ["chrome", "msedge"]) {
-    try { return await chromium.launchPersistentContext(PROFILE, { ...opts, channel }); } catch (e) { last = e; }
+    try {
+      // a browser that never comes up shouldn't hang the keeper: give up after a minute and try the next
+      return await chromium.launchPersistentContext(PROFILE, { ...opts, channel, timeout: 60_000 });
+    } catch (e) {
+      last = e;
+      log(`Couldn't start ${channel === "msedge" ? "Edge" : "Chrome"}: ${(e as Error).message.split("\n")[0].slice(0, 200)}`);
+    }
   }
   throw new Error(`Couldn't start Chrome or Edge: ${(last as Error)?.message}`);
 }

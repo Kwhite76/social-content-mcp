@@ -6,9 +6,7 @@ import { describe, expect, it } from "vitest";
 
 // The keeper in this process against a page that mimics Penpot's MCP menu, with a test call
 // standing in for Penpot's server. Needs Chrome or Edge; enable with KEEPER_E2E=1.
-const home = fs.mkdtempSync(path.join(os.tmpdir(), "keeper-probe-"));
-process.env.HOME = home;
-process.env.USERPROFILE = home;
+process.env.SCM_STATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "keeper-probe-"));
 Object.assign(process.env, { KEEPER_HEADLESS: "1", KEEPER_CHECK_MS: "1000", KEEPER_PROBE_TICKS: "1" });
 
 const html = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "penpot-mock.html"), "utf8")

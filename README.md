@@ -125,5 +125,6 @@ Settings (environment variables, filled in by the .mcpb settings screen; an unfi
 `${user_config.x}` placeholder counts as empty):
 `SCM_BRAND_KIT_DIR`, `SCM_PENPOT_MCP_KEY`, `SCM_PENPOT_URL`, `SCM_INSTAGRAM_TOKEN`,
 `SCM_INSTAGRAM_ACCOUNT_ID`, `SCM_AUTO_KEEPER`, `SCM_OUTPUT_DIR`.
-For tests: `SCM_STATE_DIR` (instead of `~/.social-content-mcp`), `SCM_INSTAGRAM_API_BASE`,
+For tests: `SCM_STATE_DIR` (moves `~/.social-content-mcp`; don't change HOME/USERPROFILE, which
+Chrome on Windows needs), `SCM_INSTAGRAM_API_BASE`,
 `SCM_DETECTOR_URL`, `SCM_DETECTOR_DIR`, `SCM_DETECTOR_RUNTIME=wasm`, `KEEPER_PROBE_TICKS`.
