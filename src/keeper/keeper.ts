@@ -60,6 +60,9 @@ export class KeeperBusy extends Error {
   constructor(public owner: LockInfo) { super(`Another keeper is already running (pid ${owner.pid}, started by ${owner.by}).`); }
 }
 
+/** set when the previous keeper died without cleaning up, so its browser may still be running */
+let previousKeeperDied = false;
+
 function acquireLock(by: string) {
   fs.mkdirSync(KEEPER_DIR, { recursive: true });
   for (let i = 0; i < 2; i++) {
@@ -71,6 +74,7 @@ function acquireLock(by: string) {
       const owner = lockOwner();
       if (owner && owner.pid !== process.pid) throw new KeeperBusy(owner);
       fs.rmSync(LOCK, { force: true }); // stale: its keeper died
+      previousKeeperDied = true;
     }
   }
   throw new Error("Couldn't take the keeper lock.");
@@ -146,7 +150,21 @@ const isLogin = (url: string) => /auth-login|auth\/login|screen=auth/.test(url);
 const isWorkspace = (url: string) => url.includes("workspace") && url.includes("file-id=");
 
 async function launch(headless: boolean): Promise<BrowserContext> {
-  await killStaleBrowser();
+  // Looking for a leftover browser is slow on some Windows machines (a WMI query), so only do it
+  // when the last keeper died without closing its browser, or when the browser won't start.
+  if (previousKeeperDied) {
+    previousKeeperDied = false;
+    await killStaleBrowser();
+  }
+  try {
+    return await launchBrowser(headless);
+  } catch {
+    await killStaleBrowser(); // a leftover browser may be holding the profile
+    return await launchBrowser(headless);
+  }
+}
+
+async function launchBrowser(headless: boolean): Promise<BrowserContext> {
   const opts = {
     headless,
     viewport: null,

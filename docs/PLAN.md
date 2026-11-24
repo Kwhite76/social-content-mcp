@@ -103,6 +103,10 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   unscored captions. Intel Macs (no onnxruntime-node build) run it on onnxruntime-web's WebAssembly build,
   same scores (tested). Locally verified with a stand-in
   DeBERTa-v3-style tokenizer and model (exact match, incl. truncation at 512 tokens)
+- [x] v0.4.1: CI on Windows had been failing since v0.3.1. Git's line-ending conversion changed the detector
+  fixtures' bytes (sizes and checksums), fixed with .gitattributes; and the keeper's leftover-browser check
+  (a WMI query, slow on GitHub's Windows runners) ran on every launch, now only after an unclean exit or a
+  failed launch
 - [ ] Detector model release (detector-model-v1) built on GitHub; real scores compared with Jade's ai-detect
 - [ ] A new user runs setup end to end
 
