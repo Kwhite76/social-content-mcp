@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 // Checks the Node detector against the original PyTorch model, then assembles the release files.
 //   tsx scripts/detector/parity.ts <export dir> <release dir>
 // Fails unless the tokenizer matches exactly and the fp32 model matches within 0.01. Ships the

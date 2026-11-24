@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";

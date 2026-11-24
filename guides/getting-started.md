@@ -365,3 +365,5 @@ Every reel opens with its style's entrance (about 4 seconds), plays 3 to 7 close
 - Everything: turn the extension off or uninstall it in Settings > Extensions. Your brand kit folder stays where it is.
 
 Facebook Page insights aren't read yet; Insights covers Instagram only.
+
+**License**: Social Content is made by Kwhite76 and released under the Apache License 2.0. You can use it, change it and share it; anyone who shares it or a version based on it must keep the credit (the `NOTICE` file and the copyright lines) and mark what they changed. See `LICENSE` and `NOTICE` on the project page: github.com/Kwhite76/social-content-mcp

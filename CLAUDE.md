@@ -13,4 +13,7 @@ TypeScript MCP server (Node >= 20, ESM, TS 7). Plan and status: docs/PLAN.md.
 - The AI-writing check is required, never optional: every caption gets a detect_ai_text score, and log_post requires it.
   Detector changes keep scripts/detector/parity.ts passing and tests/fixtures/detector in step with Python.
 - User docs: guides/getting-started.md is the one guide for users; keep it and README.md current with every change.
+- License: Apache-2.0, copyright Kwhite76. Every file in src/ and scripts/ starts with the
+  `Copyright 2026 Kwhite76` / `SPDX-License-Identifier: Apache-2.0` header; keep LICENSE and NOTICE
+  unchanged and in the bundle (tests/license.test.ts checks).
 - Release: bump the version in package.json and manifest.json, then push a tag `vX.Y.Z`.

@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reel renderer: animates a finished 1080x1350 post image into a 1080x1920, 30 fps reel
  * (H.264 + silent AAC; the user adds a sound in the app), drawn with Skia (@napi-rs/canvas)

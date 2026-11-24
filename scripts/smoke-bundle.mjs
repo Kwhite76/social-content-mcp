@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 // Starts a packed bundle's server the way Claude Desktop does and checks it answers:
 // lists tools, loads a brand kit, and renders a short reel with the bundled ffmpeg and canvas.
 //   node scripts/smoke-bundle.mjs build/mcpb-<platform>-<arch>
@@ -20,6 +22,8 @@ const detFix = path.join(import.meta.dirname, "..", "tests", "fixtures", "detect
 const srv = http.createServer((req, res) => res.end(fs.readFileSync(path.join(detFix, path.basename(req.url))))).listen(0);
 const detUrl = `http://localhost:${srv.address().port}`;
 
+for (const f of ["LICENSE", "NOTICE"])
+  if (!fs.existsSync(path.join(bundle, f))) throw new Error(`${f} missing from the bundle`);
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [path.join(bundle, "dist", "cli.js"), "serve"],

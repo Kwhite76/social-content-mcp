@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 // Spike: can a plain MCP client reach Penpot's hosted MCP with just the MCP key?
 // Usage (PowerShell):  $env:SCM_PENPOT_MCP_KEY="..."; npm run spike:penpot
 import { loadConfig } from "../src/config.js";

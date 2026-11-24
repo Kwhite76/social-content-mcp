@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";

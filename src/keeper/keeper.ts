@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";

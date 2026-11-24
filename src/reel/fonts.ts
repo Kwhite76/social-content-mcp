@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import { createRequire } from "node:module";
 
 /** Fonts that ship with the server, for reel notes. A brand can also use its own font file. */

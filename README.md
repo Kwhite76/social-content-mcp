@@ -8,6 +8,7 @@
   <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-4E8CF0?style=flat-square">
   <img alt="Claude Desktop extension" src="https://img.shields.io/badge/Claude%20Desktop-extension-7C6CF2?style=flat-square">
   <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-1B1A2E?style=flat-square">
+  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache%202.0-D9D6F0?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -277,3 +278,11 @@ Chrome on Windows needs), `SCM_INSTAGRAM_API_BASE`, `SCM_DETECTOR_URL`, `SCM_DET
 `SCM_DETECTOR_RUNTIME=wasm`, `KEEPER_PROBE_TICKS`.
 
 </details>
+
+---
+
+<p align="center">
+  Made by <a href="https://github.com/Kwhite76"><b>Kwhite76</b></a> · Licensed under <a href="LICENSE">Apache 2.0</a>
+  <br>
+  <sub>Building on this? Keep the <a href="NOTICE">NOTICE</a> file and the copyright lines, and mark what you changed.</sub>
+</p>

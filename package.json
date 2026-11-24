@@ -1,6 +1,6 @@
 {
   "name": "social-content-mcp",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Brand kit in, on-brand posts and reels out: an MCP server that interviews you about your brand, designs posts in Penpot, renders 20-30 s reels, reads Instagram Insights and keeps a history so nothing repeats.",
   "main": "dist/index.js",
   "scripts": {
@@ -13,7 +13,10 @@
     "bench:reel": "tsx scripts/bench-reel.ts",
     "pack": "node scripts/pack.mjs"
   },
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
+  "author": "Kwhite76",
+  "homepage": "https://github.com/Kwhite76/social-content-mcp",
+  "repository": { "type": "git", "url": "https://github.com/Kwhite76/social-content-mcp.git" },
   "dependencies": {
     "@fontsource/gochi-hand": "^5.3.0",
     "@fontsource/inter": "^5.3.0",

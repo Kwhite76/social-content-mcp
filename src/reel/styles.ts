@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 /** The 14 reel motion styles, one per day of a 14-day rotation. */
 export const REEL_STYLES = [
   "pushin", "slide", "pan", "drop", "shine", "flip", "rise",

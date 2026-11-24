@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import type { Pillars, Rules } from "./brandkit.js";
 import type { Entry } from "./history.js";
 import type { ReelStyle } from "./reel/styles.js";

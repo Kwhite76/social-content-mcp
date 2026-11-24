@@ -118,5 +118,9 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
   say how to get it and where to paste it); add_brand_file takes a whole folder, accepts a pasted Windows path
   in quotes or ~, and returns small previews of saved images so Claude sees the logo and example posts (images
   shared in the chat never reach the extension; the guide says to give the file's location)
+- [x] v0.4.3: Apache License 2.0, copyright Kwhite76. LICENSE (unmodified Apache text) and NOTICE ship in every
+  bundle; every source file and script has a copyright and SPDX header; package.json and manifest.json name the
+  license and author; penpot_status, the README footer and the setup guide credit Kwhite76. tests/license.test.ts
+  keeps all of it in place
 - [ ] A new user runs setup end to end
 

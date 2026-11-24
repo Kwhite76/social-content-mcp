@@ -1,3 +1,5 @@
+# Copyright 2026 Kwhite76
+# SPDX-License-Identifier: Apache-2.0
 """Converts desklib/ai-text-detector-v1.01 to ONNX for the extension's AI-writing check.
 
 Writes to OUT_DIR: model-fp32.onnx, model-int8.onnx (dynamic int8 quantization), tokenizer.json,

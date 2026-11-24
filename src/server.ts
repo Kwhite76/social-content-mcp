@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import fs from "node:fs";
 import os from "node:os";
 import { createRequire } from "node:module";
@@ -18,6 +20,7 @@ import { checkPlan, planBatch } from "./plan.js";
 import { DURATION, renderReel, renderStills, type NoteOptions } from "./reel/render.js";
 import { REEL_STYLES } from "./reel/styles.js";
 
+const ABOUT = "Social Content by Kwhite76 (github.com/Kwhite76/social-content-mcp), Apache License 2.0";
 const NO_PENPOT_KEY = "No Penpot MCP key yet. In Penpot (design.penpot.app): click your avatar > Your account > Integrations > MCP Server, turn it on and copy the key. Then in Claude Desktop: Settings > Extensions > Social Content > Configure, paste it into Penpot MCP key and save. The extension restarts and starts the keeper, which opens a Penpot window the first time so you can sign in.";
 
 const VERSION: string = createRequire(import.meta.url)("../package.json").version;
@@ -389,14 +392,14 @@ export function createServer(cfg: Config, deps: { keeper?: KeeperSupervisor } = 
     inputSchema: {},
     annotations: { readOnlyHint: true },
   }, async () => {
-    if (!penpot.configured) return json({ version: VERSION, key: "missing", keeper: keeperStatus(5), action_needed: NO_PENPOT_KEY });
+    if (!penpot.configured) return json({ version: VERSION, about: ABOUT, key: "missing", keeper: keeperStatus(5), action_needed: NO_PENPOT_KEY });
     const started = keeper && !keeperStatus(1).running ? keeper.start() : undefined;
     try {
       const file = await withPenpot(() => penpot.execute("return penpot.currentFile ? penpot.currentFile.name : null;"));
-      return json({ version: VERSION, key: "set", reachable: true, open_file: file, keeper: { ...keeperStatus(5), started } });
+      return json({ version: VERSION, about: ABOUT, key: "set", reachable: true, open_file: file, keeper: { ...keeperStatus(5), started } });
     } catch (e) {
       const st = keeperStatus(5);
-      return json({ version: VERSION, key: "set", reachable: false, error: (e as Error).message, keeper: { ...st, started }, action_needed: keeperHint(st) });
+      return json({ version: VERSION, about: ABOUT, key: "set", reachable: false, error: (e as Error).message, keeper: { ...st, started }, action_needed: keeperHint(st) });
     }
   });
 

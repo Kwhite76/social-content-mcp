@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 // Times a full ~29 s reel (5 beats) on this machine.  Run: npm run bench:reel
 import os from "node:os";
 import path from "node:path";

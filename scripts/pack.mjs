@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 // Builds the .mcpb extension for one platform (the canvas and ffmpeg binaries are per-OS).
 //   npm run pack                          this computer's platform
 //   npm run pack -- --target darwin-x64   another platform (packaging only; nothing runs)
@@ -17,7 +19,7 @@ const run = (cmd, cwd = root, env = {}) => execSync(cmd, { cwd, stdio: "inherit"
 if (!arg("--no-build")) run("npm run build");
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(stage, { recursive: true });
-for (const f of ["package.json", "package-lock.json", "README.md", "LICENSE", ".npmrc"])
+for (const f of ["package.json", "package-lock.json", "README.md", "LICENSE", "NOTICE", ".npmrc"])
   if (fs.existsSync(path.join(root, f))) fs.copyFileSync(path.join(root, f), path.join(stage, f));
 for (const d of ["dist", "guides"]) fs.cpSync(path.join(root, d), path.join(stage, d), { recursive: true, filter: (p) => !p.endsWith(".map") });
 

@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 // Renders one reel segment in a worker thread (workerData: {options, start, end, out}).
 import fs from "node:fs";
 import { workerData } from "node:worker_threads";

@@ -1,0 +1,13 @@
+Social Content MCP
+Copyright 2026 Kwhite76
+https://github.com/Kwhite76/social-content-mcp
+
+Created by Kwhite76. Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Anyone who redistributes this software, or a work based on it, must under the
+Apache License keep this NOTICE file with it, keep the copyright notices in the
+source files, and mark the files they changed.
+
+Third-party components keep their own licenses (see each package's license in
+node_modules). The AI-writing check's model, desklib/ai-text-detector-v1.01
+(MIT License), is downloaded separately on first use.

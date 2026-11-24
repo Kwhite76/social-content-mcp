@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import { parentPort, workerData } from "node:worker_threads";
 import { PenpotBridge } from "../penpot.js";
 import { KeeperBusy, runKeeper } from "./keeper.js";

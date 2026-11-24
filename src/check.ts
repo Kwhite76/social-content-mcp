@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import type { Brand } from "./brandkit.js";
 
 export interface CaptionCheck { ok: boolean; problems: string[]; words: number; hashtags: number; questions: number; characters: number }

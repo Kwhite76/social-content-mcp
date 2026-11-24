@@ -1,3 +1,5 @@
+// Copyright 2026 Kwhite76
+// SPDX-License-Identifier: Apache-2.0
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
