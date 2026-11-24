@@ -43,7 +43,7 @@ describe.skipIf(!process.env.KEEPER_E2E)("keeper (e2e)", () => {
     const k = runKeeper("");
     try {
       const log = await k.waitFor(/dropped[\s\S]*MCP connected\./, 60_000);
-      expect(log).toMatch(/Clicked MCP > Connect\./);
+      expect(log).toMatch(/Clicked MCP > Connect here\./);
       expect(log).toMatch(/MCP connection dropped\.[\s\S]*MCP connected\./);
     } finally { k.stop(); }
   }, 90_000);
