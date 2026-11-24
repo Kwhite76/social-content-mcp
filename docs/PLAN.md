@@ -31,7 +31,8 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 
 - **v0, local:** brand kit, render_post, render_reel with beats, Penpot keeper, local log.
   Test on The Hatchery.
-- **v1, plugin:** skill with multi-agent batch runs, Insights, onboarding interview. Packed as .mcpb.
+- **v1, plugin:** skill with multi-agent batch runs, Insights, onboarding interview, "Sign in to Penpot"
+  (Penpot's MCP OAuth flow, so users don't paste a key). Packed as .mcpb.
 - **v2, hosted:** OAuth, multi-user. Only if non-technical users need it.
 
 ## v0 status
@@ -41,6 +42,6 @@ Generalizes The Hatchery's `hatchery-community-post` skill into a plugin anyone 
 - [x] Local log (`log_post`, `query_history`)
 - [x] Penpot bridge (`penpot_status`, `penpot_execute`, `render_post`)
 - [x] Keeper (`social-content-mcp keeper`, `keeper_status`), e2e-tested against a mock of Penpot's MCP menu
-- [ ] Spike on a real account: `npm run spike:penpot` with a real MCP key
+- [x] Spike on a real account (2026-11-23): a plain MCP client reaches Penpot's hosted MCP with just the user's MCP key
 - [ ] `render_reel`: port the 14 styles and beats, benchmark against the Python renderer
 - [ ] Run a full Hatchery batch through v0
